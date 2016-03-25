@@ -34,7 +34,14 @@ body {
 }
 
 .container-left {
-    margin: 0;
+    margin: 0 2%;
+    width: 100%;
+}
+
+.well {
+    border: none !important;
+    background-color: #fff !important;
+    box-shadow: none !important;
 }
 
 .well h1 {
