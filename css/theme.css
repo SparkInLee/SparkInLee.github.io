@@ -34,7 +34,7 @@ body {
 }
 
 .container-left {
-    margin: 0 2%;
+    margin: 0;
     width: 100%;
 }
 
@@ -55,4 +55,11 @@ body {
 
 .author a {
     color: #ee4444;
+}
+
+@media (min-width: 960px) {
+    .container-left {
+        margin: 0 10%;
+        width: 80%;
+    }
 }
