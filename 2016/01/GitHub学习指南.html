@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>蒋黎的博客</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="蒋黎的博客" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <!-- <li><a href="/about.html">关于</a></li> -->
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/01/GitHub%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97">GitHub学习指南</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-01-github-e5-ad-a6-e4-b9-a0-e6-8c-87-e5-8d-97">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本次学习首先跟着廖雪峰老师的Git教程，了解了Git的基础概念、常用命令；然后阅读了阮一峰老师关于Git的相关总结性文章，有了更加立体的认识。在此，对二位老师表示诚挚的感谢。本小结主要参考阮一峰老师的总结文章（见文后参考文献），结合学习廖雪峰老师教程的心得，补充了一些自己的理解。主要目的在于强迫自己进行实践以加深理解。
+<!-- excerpt split --></p>
+
+<h2 id="section">一、相关术语</h2>
+<p><a href="/images/git_flow.png">
+  <img src="/images/git_flow.png" style="width:100%;height:100%;" />
+</a></p>
+
+<ul>
+  <li>Workspace: 工作区，指操作目录，包含未被Git管理的文件及未添加至暂存区的修改；</li>
+  <li>Index/Stage: 暂存区，指工作区与仓库之间的缓存，包含尚未提交到本地仓库的修改；</li>
+  <li>Repository: 本地仓库，指本地管理的代码仓库，用于离线工作；</li>
+  <li>Remote: 远程仓库，指远程服务器管理的代码仓库，用于多方协作；</li>
+</ul>
+
+<h2 id="section-1">二、常用命令</h2>
+
+<h4 id="section-2">1. 创建仓库</h4>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 初始化本地仓库，dir参数指创建指定目录并初始化为本地仓库</span>
+git init <span class="o">[</span>dir]
+
+<span class="c"># 克隆远程仓库，会包含远程库的所有信息，并在本地创建与远程master分支（默认分支）关联的本地分支；</span>
+<span class="c"># url支持多种协议：https，ssh，git等，通常来说git协议速度最快</span>
+git clone <span class="o">[</span>url]
+
+<span class="c"># 关联本地仓库到远程仓库，url指远程仓库链接</span>
+git remote add origin <span class="o">[</span>url]
+</code></pre>
+</div>
+
+<h4 id="section-3">2. 增加或删除文件</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 将指定文件夹或目录（包含子目录）添加至暂存区</span>
+git add <span class="o">[</span>file | dir] <span class="o">[</span>file | dir] ···
+
+<span class="c"># 将当前目录下所有文件到暂存区</span>
+git add .
+
+<span class="c"># 删除指定文件夹及目录（包括子目录），并将修改添加至暂存区</span>
+git rm <span class="o">[</span>file | dir] <span class="o">[</span>file | dir] ···
+
+<span class="c"># 将指定文件从git管理中删除，但保留在工作区</span>
+git rm --cached <span class="o">[</span>file]
+
+<span class="c"># 重命名文件，并将修改添加至暂存区</span>
+git mv <span class="o">[</span>file-original] <span class="o">[</span>file-renamed]
+</code></pre>
+</div>
+
+<h4 id="section-4">3. 提交修改</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 提交暂存区修改到本地仓库</span>
+git commit -m “commit message”
+
+<span class="c"># 提交工作区或暂存区中指定文件或目录到本地仓库</span>
+git commit -m “commit message” <span class="o">[</span>file | dir] ···
+
+<span class="c"># 提交工作区及暂存区中的所有修改到本地仓库</span>
+git commit -m “commit message” -a
+
+<span class="c"># 提交时显示diff信息</span>
+git commit -v
+
+<span class="c"># 提交指定文件或目录到本地仓库，并覆盖上一次的提交信息</span>
+git commit -m “commit message” --amend <span class="o">[</span>file | dir] ···
+
+</code></pre>
+</div>
+
+<h4 id="section-5">4.撤销修改</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 恢复暂存区的指定文件到工作区</span>
+git checkout <span class="o">[</span>file | dir]
+
+<span class="c"># 恢复本地仓库中指定commit的指定文件到工作区</span>
+git checkout <span class="o">[</span>commit] <span class="o">[</span>file | dir]
+
+<span class="c"># 恢复本地仓库中上一个commit的所有文件到工作区</span>
+git checkout .
+
+<span class="c"># 重置暂存区中的指定文件至本地仓库中的上一次commit，工作区中文件保持不变</span>
+git reset <span class="o">[</span>file]
+
+<span class="c"># 重置暂存区及工作区中文件至本地仓库中上一次commit的状态</span>
+git reset --hard
+
+<span class="c"># 重置暂存区（及工作区（--hard））中文件至本地仓库中指定commit的状态</span>
+git reset <span class="o">[</span>--hard] <span class="o">[</span>commit]
+
+<span class="c"># 重置HEAD指向指定commit，但保持暂存区及工作区不变</span>
+git reset --keep <span class="o">[</span>commit]
+
+<span class="c"># 新增一个commit用以撤销本地仓库中指定commit中的修改</span>
+git revert <span class="o">[</span>commit]
+
+</code></pre>
+</div>
+
+<h4 id="section-6">5. 分支操作</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 列出所有本地分支</span>
+git branch
+
+<span class="c"># 列出所有远程分支</span>
+git branch -r
+
+<span class="c"># 列出所有本地分支和远程分支</span>
+git branch -a
+
+<span class="c"># 新建一个分支，但依旧留在当前分支</span>
+git branch <span class="o">[</span><span class="nb">local</span>-branch]
+
+<span class="c"># 新建一个分支，并切换到新建的分支</span>
+git checkout -b <span class="o">[</span><span class="nb">local</span>-branch]
+
+<span class="c"># 新建一个分支，指向指定commit</span>
+git branch <span class="o">[</span><span class="nb">local</span>-branch] <span class="o">[</span>commit]
+
+<span class="c"># 新建一个分支，与指定的远程分支建立追踪关系</span>
+git branch --track <span class="o">[</span><span class="nb">local</span>-branch] <span class="o">[</span>remote-branch]
+
+<span class="c"># 本地分支：则切换到指定本地分支，并更新工作区至指定分支的最近一次commit</span>
+<span class="c"># 远程分支：则切换为指向指定远程分支的“detached HEAD”态</span>
+git checkout <span class="o">[</span>branch]
+
+<span class="c"># 建立本地分支与远程分支的追踪关系，以进行同步</span>
+git branch --set-upstream <span class="o">[</span><span class="nb">local</span>-branch] <span class="o">[</span>remote-branch]
+
+<span class="c"># 合并指定分支所有修改到当前分支</span>
+git merge <span class="o">[</span>branch]
+
+<span class="c"># 选择一个commit，合并该commit之前的所有修改进当前分支</span>
+<span class="gp">$ </span>git cherry-pick <span class="o">[</span>commit]
+
+<span class="c"># 删除分支，当分支有未合并数据且决定丢弃时需要用“-D”进行强制删除</span>
+<span class="gp">$ </span>git branch -d <span class="o">[</span>branch-name]
+
+<span class="c"># 删除远程分支</span>
+<span class="gp">$ </span>git push origin --delete <span class="o">[</span>branch-name]
+<span class="gp">$ </span>git branch -dr <span class="o">[</span>remote/branch]
+</code></pre>
+</div>
+
+<h4 id="section-7">6. 标签操作</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 列出所有tag</span>
+git tag
+
+<span class="c"># 新建一个tag在当前commit</span>
+git tag <span class="o">[</span>tag]
+
+<span class="c"># 新建一个tag在指定commit</span>
+git tag <span class="o">[</span>tag] <span class="o">[</span>commit]
+
+<span class="c"># 删除本地tag</span>
+git tag -d <span class="o">[</span>tag]
+
+<span class="c"># 提交指定tag</span>
+git push <span class="o">[</span>remote] <span class="o">[</span>tag]
+
+<span class="c"># 提交所有tag</span>
+git push <span class="o">[</span>remote] --tags
+
+<span class="c"># 删除远程tag</span>
+git push origin :refs/tags/[tagName]
+
+<span class="c"># 查看tag信息</span>
+git show <span class="o">[</span>tag]
+
+<span class="c"># 新建一个分支，指向某个tag</span>
+git checkout -b <span class="o">[</span>branch] <span class="o">[</span>tag]
+
+<span class="c"># 创建签名tag，采用GPG签名，详见参考网址</span>
+git tag -s <span class="o">[</span>tag]
+</code></pre>
+</div>
+
+<h4 id="section-8">7. 查看信息</h4>
+<p><em>查看当前修改状态</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>git status
+</code></pre>
+</div>
+
+<p><em>查看日志信息</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示当前分支的版本历史，--stat会显示每次commit的修改文件及其对应的修改数</span>
+git log <span class="o">[</span>--stat]
+
+<span class="c"># 显示截止到指定commit的版本历史</span>
+git log <span class="o">[</span>commit]
+
+<span class="c"># 显示两个commit之间（包含这两个commit）的版本历史</span>
+git log <span class="o">[</span>lt-commit]...[gt-commit] --grep feature
+
+<span class="c"># 显示每次commit中指定文件的元数据修改信息</span>
+git log -p <span class="o">[</span>file]
+
+<span class="c"># 显示某个文件的版本历史（包括文件改名）</span>
+git whatchanged <span class="o">[</span>file]
+
+<span class="c"># 显示指定文件的修改历史（包含修改时间及作者）</span>
+git blame <span class="o">[</span>file]
+
+<span class="c"># --pretty=[onelile | format ···]，用于设定显示格式</span>
+<span class="c"># --grep="regex"，用于搜索提交说明</span>
+<span class="c"># 详见git help log</span>
+</code></pre>
+</div>
+
+<p><em>查看差异信息</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示工作区与暂存区的差异</span>
+git diff
+
+<span class="c"># 显示工作区与指定commit之间的差异</span>
+git diff <span class="o">[</span>commit]
+
+<span class="c"># 显示暂存区和指定commit的差异</span>
+git diff --cached <span class="o">[</span>commit]
+
+<span class="c"># 显示两次commit之间（包含这两个commit）的差异</span>
+git diff <span class="o">[</span>lt-commit]...[gt-commit]
+
+<span class="c"># 以上查看差异的命令中均可指定file，以查询指定文件的差异</span>
+</code></pre>
+</div>
+
+<p><em>查看commit或tag信息</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示某次commit或tag的所有元数据修改</span>
+git show <span class="o">[</span>commit | tag]
+
+<span class="c"># 显示某次commit或tag发生变化的文件名</span>
+git show --name-only <span class="o">[</span>commit | tag]
+
+<span class="c"># 显示某次commit或tag中指定文件的所有内容</span>
+git show <span class="o">[</span>commit | tag]:[filename]
+</code></pre>
+</div>
+
+<p><em>查看最近git操作</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>git reflog
+</code></pre>
+</div>
+
+<h4 id="section-9">8. 远程同步</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示所有远程仓库</span>
+git remote -v
+
+<span class="c"># 显示某个远程仓库的信息</span>
+git remote show <span class="o">[</span>remote]
+
+<span class="c"># 增加一个新的远程仓库，并命名。当ssh被屏蔽，可以配置https协议等</span>
+git remote add <span class="o">[</span>shortname] <span class="o">[</span>url]
+
+<span class="c"># 同步远程仓库的所有修改</span>
+git fetch <span class="o">[</span>remote]
+
+<span class="c"># 取回远程仓库的变化，并与本地分支合并，相当于fetch + merge</span>
+git pull <span class="o">[</span>remote] <span class="o">[</span>branch]
+
+<span class="c"># 上传本地指定分支到远程仓库</span>
+git push <span class="o">[</span>remote] <span class="o">[</span>branch]
+
+<span class="c"># 强行推送当前分支到远程仓库，即使有冲突</span>
+git push <span class="o">[</span>remote] --force
+
+<span class="c"># 推送所有分支到远程仓库</span>
+git push <span class="o">[</span>remote] --all
+</code></pre>
+</div>
+
+<h4 id="section-10">9. 其他</h4>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 调整指定commit及之后的所有commit的结构</span>
+git rebase -i <span class="o">[</span>commit]
+<span class="c"># 调整两个commit之间（包含这两个commit）的所有commit的结构</span>
+git rebase -i <span class="o">[</span>lt-commit]...[gt-commit]
+
+<span class="c"># 使用交互模式时首先会进入所选提交的rebase编辑界面：</span>
+<span class="c"># </span>
+<span class="c"># 相关命令：</span>
+<span class="c"># p, pick = 使用提交</span>
+<span class="c"># r, reword = 使用提交，但是需要更新提交说明</span>
+<span class="c"># e, edit = 使用提交，但处理该提交的时候暂停以进行修正，如可以将一个commit分割成多个commit等</span>
+<span class="c"># s, squash = 将该提交放入其之前的一个提交中，保留提交说明到上一个提交的提交说明</span>
+<span class="c"># f, fixup = 将该提交放入其之前的一个提交中，放弃提交说明</span>
+<span class="c"># x, exec = 执行相应的shell命令</span>
+<span class="c"># d, drop = 删除提交</span>
+<span class="c"># </span>
+<span class="c"># 相关说明：</span>
+<span class="c"># 所有的提交可以调整顺序，执行时自上而下执行；</span>
+<span class="c"># 如果仅仅移除其中一行提交信息，会导致该提交丢失</span>
+<span class="c"># 如果删除所有提交信息，会导致rebase终止</span>
+<span class="c"># 注意空提交将被注释</span>
+</code></pre>
+</div>
+
+<h4 id="section-11">10. 配置</h4>
+
+<h5 id="gitconfig">~/.gitconfig文件</h5>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 配置git的用户信息</span>
+<span class="o">[</span>user]
+    name <span class="o">=</span> xxx
+    email <span class="o">=</span> xxx
+<span class="c"># 配置别名，顺便安利下某大神log输出的配置</span>
+<span class="o">[</span><span class="nb">alias</span><span class="o">]</span>
+    lg <span class="o">=</span> <span class="s2">"log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)&lt;%an&gt;%Creset' --abbrev-commit"</span>
+</code></pre>
+</div>
+
+<h5 id="projectgitconfig">project/.git/config文件</h5>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 核心配置，尚在研究中</span>
+<span class="o">[</span>core]
+     repositoryformatversion <span class="o">=</span> 0
+     filemode <span class="o">=</span> <span class="nb">true
+     </span>bare <span class="o">=</span> <span class="nb">false
+     </span>logallrefupdates <span class="o">=</span> <span class="nb">true
+     </span>ignorecase <span class="o">=</span> <span class="nb">true
+     </span>precomposeunicode <span class="o">=</span> <span class="nb">true</span>
+<span class="c"># 远程仓库地址，可配置多个不同协议的远程仓库</span>
+<span class="o">[</span>remote <span class="s2">"origin"</span><span class="o">]</span>
+     url <span class="o">=</span> xxx
+     fetch <span class="o">=</span> +refs/heads/<span class="k">*</span>:refs/remotes/origin/<span class="k">*</span>
+<span class="c"># 本地分支，可设置多个</span>
+<span class="o">[</span>branch <span class="s2">"master"</span><span class="o">]</span>
+     <span class="c"># 指定使用的远程仓库</span>
+     remote <span class="o">=</span> origin
+     <span class="c"># 指定追踪的远程分支</span>
+     merge <span class="o">=</span> refs/heads/master
+</code></pre>
+</div>
+
+<h5 id="projectgitignore">project/.gitignore文件</h5>
+<p><em>该文件指定那些不需要git管理的文件，见<a href="https://github.com/github/gitignore">gitignore模板</a></em></p>
+
+<h2 id="github">三、场景应用之GitHub</h2>
+<p><a href="/images/git_rule.png">
+  <img src="/images/git_rule.png" style="width:100%;height:100%;" />
+</a></p>
+
+<h2 id="bug">四、场景应用之Bug分支</h2>
+
+<p><em>假设正在dev分支上开发时，接到优先级更高的bug修复任务，因此需要先保存dev分支的现场，然后新开bug分支完成修复任务之后再恢复dev分支的现场，继续之前的开发：</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 假设当前在dev分支</span>
+<span class="c"># 保存dev分支的现场，此时工作区变为clean</span>
+git stash
+
+<span class="c"># 切换到需要修复bug的分支，新建并切换bug分支</span>
+git checkout <span class="o">[</span>fix-branch]
+git checkout -b <span class="o">[</span>issue]
+
+<span class="c"># 修复完bug之后提交，并回到需要修复bug的分支进行合并，之后删除bug分支</span>
+git checkout <span class="o">[</span>fix-branch]
+git merge <span class="o">[</span>issue]
+git branch -d <span class="o">[</span>issue]
+
+<span class="c"># 切回dev分支，并恢复现场后继续开发工作</span>
+git checkout dev
+git stash pop
+</code></pre>
+</div>
+
+<p><em>stash用于保存现场，现场会被保存在一个现场栈中，有以下操作命令:</em></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 查看现场栈信息</span>
+git stash list
+
+<span class="c"># 保存当前分支的现场</span>
+git stash
+
+<span class="c"># 恢复指定现场，当不在现场栈中删除</span>
+git stash apply <span class="o">[</span>stash@<span class="o">{</span>N<span class="o">}]</span>
+
+<span class="c"># 在现场栈中删除指定现场</span>
+git stash drop <span class="o">[</span>stash@<span class="o">{</span>N<span class="o">}]</span>
+
+<span class="c"># 恢复并删除栈顶现场</span>
+git stash pop
+</code></pre>
+</div>
+
+<h2 id="section-12">五、参考文献</h2>
+<ol>
+  <li><a href="http://www.liaoxuefeng.com/wiki/0013739516305929606dd18361248578c67b8067c8c017b000">Git教程 - - 廖雪峰</a></li>
+  <li><a href="http://www.ruanyifeng.com/blog/2015/12/git-cheat-sheet.html">常用Git命令清单 - - 阮一峰</a></li>
+  <li><a href="http://www.ruanyifeng.com/blog/2015/08/git-use-process.html">Git使用规范流程 - - 阮一峰</a></li>
+  <li><a href="http://www.ruanyifeng.com/blog/2015/12/git-workflow.html">Git 工作流程 - - 阮一峰</a></li>
+  <li><a href="http://www.ruanyifeng.com/blog/2016/01/commit_message_change_log.html">Commit message 和 Change log 编写指南 - - 阮一峰</a></li>
+  <li><a href="http://blog.csdn.net/wh_19910525/article/details/7468549">git log使用详解 - - wh_19910525(csdn)</a></li>
+  <li><a href="http://git-scm.com/">Git官网</a></li>
+  <li><a href="http://www.ruanyifeng.com/blog/2013/07/gpg.html">GPG入门教程 – 阮一峰</a></li>
+</ol>
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+                <a class="btn btn-default" href="/2016/01/JUnit%E4%B9%8BAssertion" class="next">下一篇</a>
+              
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
+        
+          <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
+        
+          <li><a href="/2016/01/GitHub%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97">GitHub学习指南</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+  <li><a href="https://github.com/SparkInLee/HotPatch" target="blank">HotPatch</a></li>
+</ul>
+
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-01-github-e5-ad-a6-e4-b9-a0-e6-8c-87-e5-8d-97';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 蒋黎的博客.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-01-github-e5-ad-a6-e4-b9-a0-e6-8c-87-e5-8d-97';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+

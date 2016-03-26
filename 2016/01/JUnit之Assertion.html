@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>蒋黎的博客</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="蒋黎的博客" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <!-- <li><a href="/about.html">关于</a></li> -->
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-01-junit-e4-b9-8bassertion">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本文总结了单元测试框架JUnit的断言函数。
+<!-- excerpt split --></p>
+
+<h3 id="true">1、True断言</h3>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertTrue</span><span class="o">(</span><span class="kt">boolean</span><span class="o">)</span>
+<span class="n">assertTrue</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="kt">boolean</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>注：相对应的有<code class="highlighter-rouge">assertFalse</code>进行False断言</p>
+
+<h3 id="section">2、非等断言</h3>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertNotEquals</span><span class="o">(</span><span class="n">Object</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
+<span class="n">assertNotEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
+<span class="n">assertNotEquals</span><span class="o">(</span><span class="kt">long</span><span class="o">,</span> <span class="kt">long</span><span class="o">)</span>
+<span class="n">assertNotEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="kt">long</span><span class="o">,</span> <span class="kt">long</span><span class="o">)</span>
+
+<span class="c1">// 参数分别指：unexpected, actual,delta，其中delta用于非精准断言</span>
+<span class="n">assertNotEquals</span><span class="o">(</span><span class="kt">float</span><span class="o">,</span> <span class="kt">float</span><span class="o">,</span> <span class="kt">float</span><span class="o">)</span>
+
+<span class="n">assertNotEquals</span><span class="o">(</span><span class="kt">double</span><span class="o">,</span> <span class="kt">double</span><span class="o">,</span> <span class="kt">double</span><span class="o">)</span>
+<span class="n">assertNotEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="kt">double</span><span class="o">,</span> <span class="kt">double</span><span class="o">,</span> <span class="kt">double</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>注：相对应的有<code class="highlighter-rouge">assertEquals</code>进行相等断言</p>
+
+<h2 id="section-1">3、 数组断言</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// [Object | boolean | byte | char | short | int | long | double | float]</span>
+<span class="n">assertArrayEquals</span><span class="o">(</span><span class="n">Object</span><span class="o">[],</span> <span class="n">Object</span><span class="o">[])</span> 
+
+<span class="n">assertArrayEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">[],</span> <span class="n">Object</span><span class="o">[])</span>
+</code></pre>
+</div>
+<p>注：对于<code class="highlighter-rouge">double</code>及<code class="highlighter-rouge">float</code>需要传入<code class="highlighter-rouge">delta</code>进行非精准断言</p>
+
+<h2 id="section-2">4、非空断言</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertNotNull</span><span class="o">(</span><span class="n">Object</span><span class="o">)</span>
+<span class="n">assertNotNull</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>注：相对应的有<code class="highlighter-rouge">assertNull</code>进行空断言</p>
+
+<h2 id="section-3">5、相同断言</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertSame</span><span class="o">(</span><span class="n">Object</span><span class="o">)</span>
+<span class="n">assertSame</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>注：相对应的有<code class="highlighter-rouge">assertNotSame</code>进行非同断言</p>
+
+<h2 id="section-4">6、匹配断言</h2>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertThat</span><span class="o">(</span><span class="n">T</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;)</span>
+<span class="n">assertThat</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">T</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;)</span>
+</code></pre>
+</div>
+<p>注：具体见<a href="/2016/01/JUnit之Matcher">JUnit之Matcher</a></p>
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+                <a class="btn btn-default" href="/2016/01/JUnit%E4%B9%8BMatcher" class="next">下一篇</a>
+              
+              
+                <a class="btn btn-default" href="/2016/01/GitHub%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97" class="previous">上一篇</a>
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
+        
+          <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
+        
+          <li><a href="/2016/01/GitHub%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97">GitHub学习指南</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+  <li><a href="https://github.com/SparkInLee/HotPatch" target="blank">HotPatch</a></li>
+</ul>
+
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-01-junit-e4-b9-8bassertion';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 蒋黎的博客.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-01-junit-e4-b9-8bassertion';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+

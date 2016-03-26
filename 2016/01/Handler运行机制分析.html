@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>蒋黎的博客</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="蒋黎的博客" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <!-- <li><a href="/about.html">关于</a></li> -->
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-01-handler-e8-bf-90-e8-a1-8c-e6-9c-ba-e5-88-b6-e5-88-86-e6-9e-90">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本文按照<code class="highlighter-rouge">Handler</code>的使用流程逐步分析<code class="highlighter-rouge">AndroidFramwork</code>层中Handler的运行机制，涉及到的类包括<code class="highlighter-rouge">Handler.java</code>、<code class="highlighter-rouge">Looper.java</code>、<code class="highlighter-rouge">Message.java</code>、<code class="highlighter-rouge">MessageQueue.java</code>、<code class="highlighter-rouge">HandlerThread.java</code>，这些类均在<code class="highlighter-rouge">android.os</code>包里。
+<!-- excerpt split --></p>
+
+<h3 id="handler">1. Handler的使用</h3>
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(){</span>
+    	<span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="kt">void</span> <span class="n">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kd">super</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">};</span>
+    <span class="n">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">mHandler</span><span class="o">.</span><span class="na">obtainMessage</span><span class="o">(</span><span class="n">what</span><span class="o">);</span>
+    <span class="n">mHandler</span><span class="o">.</span><span class="na">sendMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+</code></pre>
+</div>
+<p>从上述代码可知，我们使用<code class="highlighter-rouge">Handler</code>的流程：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    创建Handler -&gt; 获取消息对象 -&gt; 发送消息 -&gt; 处理消息
+</code></pre>
+</div>
+
+<h3 id="handler-1">2. Handler的创建</h3>
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="nf">Handler</span><span class="p">(</span><span class="n">Looper</span> <span class="n">looper</span><span class="o">,</span> <span class="n">Callback</span> <span class="n">callback</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">async</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mLooper</span> <span class="o">=</span> <span class="n">looper</span><span class="o">;</span>
+        <span class="n">mQueue</span> <span class="o">=</span> <span class="n">looper</span><span class="o">.</span><span class="na">mQueue</span><span class="o">;</span>
+        <span class="n">mCallback</span> <span class="o">=</span> <span class="n">callback</span><span class="o">;</span>
+        <span class="n">mAsynchronous</span> <span class="o">=</span> <span class="n">async</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>构建函数中比较重要的是<code class="highlighter-rouge">looper（Looper）</code>对象，<code class="highlighter-rouge">mQueue（MessageQueue）</code>对象是与<code class="highlighter-rouge">looper</code>相关联的，<code class="highlighter-rouge">mCallback</code>及<code class="highlighter-rouge">mAsynchronous</code>后续会讲解。</p>
+
+<h3 id="looper">3. Looper的来历</h3>
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="nf">Looper</span><span class="p">(</span><span class="kt">boolean</span> <span class="n">quitAllowed</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mQueue</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MessageQueue</span><span class="o">(</span><span class="n">quitAllowed</span><span class="o">);</span>
+        <span class="n">mThread</span> <span class="o">=</span> <span class="n">Thread</span><span class="o">.</span><span class="na">currentThread</span><span class="o">();</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>构建函数中设置当前线程对象到mThread变量中，并创建了一个<code class="highlighter-rouge">MessageQueue</code>对象，其创建过程我们稍后分析。心细的读者可能已经发现这是个私有构造函数，那么肯定是在类内部进行调用的，搜索发现其调用函数为：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">prepare</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">prepare</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="c1">// 目前quitAllowed应该仅在主线程中被设置成false，自定义线程中均为true</span>
+    <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="n">prepare</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">quitAllowed</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">sThreadLocal</span><span class="o">.</span><span class="na">get</span><span class="o">()</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">RuntimeException</span><span class="o">(</span><span class="s">"Only one Looper may be created per thread"</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="n">sThreadLocal</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="k">new</span> <span class="n">Looper</span><span class="o">(</span><span class="n">quitAllowed</span><span class="o">));</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p><code class="highlighter-rouge">Looper#prepare</code>方法会创建<code class="highlighter-rouge">Looper</code>对象，并且某一线程仅能创建一个<code class="highlighter-rouge">Looper</code>对象，然后将创建的对象设置为线程安全变量。那么这个函数在哪里调用咧？既然跟线程相关，那么大胆猜测是在线程中调用的，而Android中最主要的线程是主线程，我们一开始的“<code class="highlighter-rouge">Handler</code>的基本使用”中并没有创建<code class="highlighter-rouge">Looper</code>，却可以使用<code class="highlighter-rouge">Handler</code>，那么Android主线程中必然在生成的时候就新建了一个<code class="highlighter-rouge">Looper</code>，查看<code class="highlighter-rouge">Looper</code>源码时会发现的确含有一个特殊的<code class="highlighter-rouge">Looper</code>（即：<code class="highlighter-rouge">sMainLooper</code>），这个特殊<code class="highlighter-rouge">Looper</code>对象通过调用<code class="highlighter-rouge">Looper#prepareMainLooper()</code>创建的，我们可以去<code class="highlighter-rouge">ActivityThread</code>中去看是如何实现的：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="p">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">//···</span>
+        <span class="n">Looper</span><span class="o">.</span><span class="na">prepareMainLooper</span><span class="o">();</span>
+        <span class="c1">//···</span>
+        <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
+        <span class="c1">//···</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>上述代码已去掉无关代码，至此我们就了解了<code class="highlighter-rouge">Looper</code>的来历，但之后调用的<code class="highlighter-rouge">Looper#loop()</code>是个什么鬼?这个主要是进入一个不断从<code class="highlighter-rouge">MessageQueue</code>中获取消息进行处理的无限循环，在分析这个循环之前我们要先来分析下<code class="highlighter-rouge">MessageQueue</code>是个什么鬼。</p>
+
+<h3 id="messagequeue">4. MessageQueue是什么鬼</h3>
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="n">mQueue</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MessageQueue</span><span class="o">(</span><span class="n">quitAllowed</span><span class="o">);</span>
+</code></pre>
+</div>
+<p>上面创建<code class="highlighter-rouge">Looper</code>的时新建了一个<code class="highlighter-rouge">MessageQueue</code>对象，看下它的构造函数：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="n">MessageQueue</span><span class="o">(</span><span class="kt">boolean</span> <span class="n">quitAllowed</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mQuitAllowed</span> <span class="o">=</span> <span class="n">quitAllowed</span><span class="o">;</span>
+        <span class="n">mPtr</span> <span class="o">=</span> <span class="n">nativeInit</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="kd">private</span> <span class="kd">native</span> <span class="kd">static</span> <span class="kt">long</span> <span class="n">nativeInit</span><span class="o">();</span>
+</code></pre>
+</div>
+<p>WFK，你就给我看这个！！！C++学渣表示强烈抗议。对于Native感兴趣的小伙伴可以自行查看源码，我跟着老罗的文章&lt;<a href="http://blog.csdn.net/luoshengyang/article/details/6817933">Android应用程序消息处理机制（Looper、Handler）分析</a>&gt;稍微感受了下源码的逻辑，<code class="highlighter-rouge">nativeInit</code>就是在native层创建了一个<code class="highlighter-rouge">NativeMessageQueue</code>及一个<code class="highlighter-rouge">Looper</code>对象，而native层的<code class="highlighter-rouge">Looper</code>对象利用管道机制来监控文件，从而可以利用epoll机制实现<code class="highlighter-rouge">MessageQueue</code>的等待和唤醒，这个在<code class="highlighter-rouge">MessageQueue#next()</code>会进一步分析。至此，<code class="highlighter-rouge">MessageQueue</code>对象就被创建出来了(由于<code class="highlighter-rouge">MessageQueue</code>的构建函数仅有包访问权限，因此正常情况下我们无需关心<code class="highlighter-rouge">MessageQueue</code>的创建)，然后我们来看下<code class="highlighter-rouge">Looper#loop()</code>到底在做什么。</p>
+
+<h3 id="looperloop">5. Looper#loop()到底正在做什么</h3>
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">loop</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">final</span> <span class="n">Looper</span> <span class="n">me</span> <span class="o">=</span> <span class="n">myLooper</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">me</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">RuntimeException</span><span class="o">(</span><span class="s">"Looper.prepare() wasn't called on this thread."</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="kd">final</span> <span class="n">MessageQueue</span> <span class="n">queue</span> <span class="o">=</span> <span class="n">me</span><span class="o">.</span><span class="na">mQueue</span><span class="o">;</span>
+        <span class="c1">//···省略无关代码</span>
+        <span class="k">for</span> <span class="o">(;;)</span> <span class="o">{</span>
+            <span class="n">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="na">next</span><span class="o">();</span> <span class="c1">// might block</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">msg</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="c1">// No message indicates that the message queue is quitting.</span>
+                <span class="k">return</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="c1">//···省略无关代码</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">target</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+            <span class="c1">//···省略无关代码</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">recycleUnchecked</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p><code class="highlighter-rouge">Looper#loop()</code>方法只有当<code class="highlighter-rouge">Looper</code>被创建出来之后方可调用，主要包括一个无限循环：从<code class="highlighter-rouge">MessageQueue</code>中获取消息进行处理，然后回收处理完的消息。我们先来看<code class="highlighter-rouge">MessageQueue#next()</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="n">Message</span> <span class="nf">next</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 在Looper#loop()中我们知道返回空消息会退出loop()中的无限循环</span>
+        <span class="c1">// 当调用MessageQueue#quit(boolean)时会调用nativeDestory()销毁MessageQueue，将ptr置为0</span>
+        <span class="kd">final</span> <span class="kt">long</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">mPtr</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">ptr</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="kt">int</span> <span class="n">pendingIdleHandlerCount</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span> <span class="c1">// 仅在第一次调用时为-1</span>
+        <span class="kt">int</span> <span class="n">nextPollTimeoutMillis</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="k">for</span> <span class="o">(;;)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">nextPollTimeoutMillis</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">Binder</span><span class="o">.</span><span class="na">flushPendingCommands</span><span class="o">();</span>
+            <span class="o">}</span>
+
+            <span class="cm">/**
+            * 这个调用跟上面提到native层中Looper的epoll机制相关，用于等待可处理的消息
+            * nextPollTimeoutMillis &lt; 0 : 进入无限空闲等待，直到有新消息唤醒
+            * nextPollTimeoutMillis = 0 : 不等待
+            * nextPollTimeoutMillis &gt; 0 : 进入空闲等待，直到有新消息唤醒或者nextPollTimeoutMillis超时
+            **/</span>
+            <span class="n">nativePollOnce</span><span class="o">(</span><span class="n">ptr</span><span class="o">,</span> <span class="n">nextPollTimeoutMillis</span><span class="o">);</span>
+
+            <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+                <span class="kd">final</span> <span class="kt">long</span> <span class="n">now</span> <span class="o">=</span> <span class="n">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">();</span>
+                <span class="n">Message</span> <span class="n">prevMsg</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+                <span class="n">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">mMessages</span><span class="o">;</span>
+                <span class="c1">// 注：MessageQueue管理的消息是一个消息链表，后续Message中会详细分析</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">msg</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">msg</span><span class="o">.</span><span class="na">target</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="cm">/**
+                    * msg.target为空是一类特殊消息（栅栏消息），用于阻塞所有同步消息，但是对异步消息没有影响，
+                    * 后续会详细分析。在这个前提下，当头部是特殊消息时需要往后找是否有异步消息
+                    */</span>
+                    <span class="k">do</span> <span class="o">{</span>
+                        <span class="n">prevMsg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">;</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                    <span class="o">}</span> <span class="k">while</span> <span class="o">(</span><span class="n">msg</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">msg</span><span class="o">.</span><span class="na">isAsynchronous</span><span class="o">());</span>
+                <span class="o">}</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">msg</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                	<span class="c1">// 找到消息</span>
+                    <span class="k">if</span> <span class="o">(</span><span class="n">now</span> <span class="o">&lt;</span> <span class="n">msg</span><span class="o">.</span><span class="na">when</span><span class="o">)</span> <span class="o">{</span>
+                        <span class="c1">// 消息的触发时间在当前时间之后，于是计算出需要等待的时间，准备进入有限空闲等待</span>
+                        <span class="n">nextPollTimeoutMillis</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">Math</span><span class="o">.</span><span class="na">min</span><span class="o">(</span><span class="n">msg</span><span class="o">.</span><span class="na">when</span> <span class="o">-</span> <span class="n">now</span><span class="o">,</span> <span class="n">Integer</span><span class="o">.</span><span class="na">MAX_VALUE</span><span class="o">);</span>
+                    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                    	<span class="c1">// 找到可处理的消息，更新消息链表数据，返回可处理消息</span>
+                        <span class="n">mBlocked</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+                        <span class="k">if</span> <span class="o">(</span><span class="n">prevMsg</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                            <span class="n">prevMsg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                            <span class="n">mMessages</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                        <span class="o">}</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+                        <span class="k">if</span> <span class="o">(</span><span class="kc">false</span><span class="o">)</span> <span class="n">Log</span><span class="o">.</span><span class="na">v</span><span class="o">(</span><span class="s">"MessageQueue"</span><span class="o">,</span> <span class="s">"Returning message: "</span> <span class="o">+</span> <span class="n">msg</span><span class="o">);</span>
+                        <span class="k">return</span> <span class="n">msg</span><span class="o">;</span>
+                    <span class="o">}</span>
+                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                    <span class="c1">// 没找到消息，准备进入无限空闲等待</span>
+                    <span class="n">nextPollTimeoutMillis</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+                <span class="o">}</span>
+
+                <span class="c1">// 没有可处理的消息，并且消息队列已经退出，则返回空消息让loop退出</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">mQuitting</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">dispose</span><span class="o">();</span>
+                    <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+                <span class="o">}</span>
+
+                <span class="c1">// 当mMessages为空或者mMessages的处理时间在当前时间之后（注意栅栏消息的特殊情况）时，</span>
+                <span class="c1">// 并且pendingIdleHandlerCount没有在此处初始化过，</span>
+                <span class="c1">// 则设置pendingIdleHandlerCount为IdleHandler的数量，IdleHandler后续详细说明。</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">pendingIdleHandlerCount</span> <span class="o">&lt;</span> <span class="mi">0</span>
+                        <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">mMessages</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">now</span> <span class="o">&lt;</span> <span class="n">mMessages</span><span class="o">.</span><span class="na">when</span><span class="o">))</span> <span class="o">{</span>
+                    <span class="n">pendingIdleHandlerCount</span> <span class="o">=</span> <span class="n">mIdleHandlers</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+                <span class="o">}</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">pendingIdleHandlerCount</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="c1">// 无空闲处理器，阻塞队列，进入空闲等待</span>
+                    <span class="n">mBlocked</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+                    <span class="k">continue</span><span class="o">;</span>
+                <span class="o">}</span>
+
+                <span class="k">if</span> <span class="o">(</span><span class="n">mPendingIdleHandlers</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">mPendingIdleHandlers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">IdleHandler</span><span class="o">[</span><span class="n">Math</span><span class="o">.</span><span class="na">max</span><span class="o">(</span><span class="n">pendingIdleHandlerCount</span><span class="o">,</span> <span class="mi">4</span><span class="o">)];</span>
+                <span class="o">}</span>
+                <span class="n">mPendingIdleHandlers</span> <span class="o">=</span> <span class="n">mIdleHandlers</span><span class="o">.</span><span class="na">toArray</span><span class="o">(</span><span class="n">mPendingIdleHandlers</span><span class="o">);</span>
+            <span class="o">}</span>
+
+            <span class="c1">// 调用空闲处理器逻辑，此处代码仅调用一次</span>
+            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">pendingIdleHandlerCount</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+                <span class="kd">final</span> <span class="n">IdleHandler</span> <span class="n">idler</span> <span class="o">=</span> <span class="n">mPendingIdleHandlers</span><span class="o">[</span><span class="n">i</span><span class="o">];</span>
+                <span class="n">mPendingIdleHandlers</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="c1">// release the reference to the handler</span>
+
+                <span class="kt">boolean</span> <span class="n">keep</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+                <span class="k">try</span> <span class="o">{</span>
+                    <span class="n">keep</span> <span class="o">=</span> <span class="n">idler</span><span class="o">.</span><span class="na">queueIdle</span><span class="o">();</span>
+                <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Throwable</span> <span class="n">t</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">Log</span><span class="o">.</span><span class="na">wtf</span><span class="o">(</span><span class="s">"MessageQueue"</span><span class="o">,</span> <span class="s">"IdleHandler threw exception"</span><span class="o">,</span> <span class="n">t</span><span class="o">);</span>
+                <span class="o">}</span>
+
+                <span class="k">if</span> <span class="o">(!</span><span class="n">keep</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+                        <span class="n">mIdleHandlers</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">idler</span><span class="o">);</span>
+                    <span class="o">}</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+
+            <span class="c1">// 设置为0保证空闲处理器代码仅调用一次</span>
+            <span class="n">pendingIdleHandlerCount</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+
+            <span class="c1">// 在处理空闲处理器的时候可能已经有可处理的消息，因此无需等待</span>
+            <span class="n">nextPollTimeoutMillis</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>由于这个函数是消息获取的关键，因此是无删减版。而相关说明直接注释在代码中，主要目的在于建议小伙伴们看源码。我相信读完源码应该对获取消息的机制有了比较完整的了解，当<code class="highlighter-rouge">loop</code>从<code class="highlighter-rouge">MessageQueue</code>中获取到消息便可以进行消息处理并在处理后回收该消息，具体等我们分析完消息的发送之后再来看。</p>
+
+<h3 id="handlersendmessage">6. Handler#sendMessage中的消息怎么获取到</h3>
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="n">Message</span> <span class="nf">obtainMessage</span><span class="p">(</span><span class="o">){</span>
+        <span class="k">return</span> <span class="n">Message</span><span class="o">.</span><span class="na">obtain</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>直接调用<code class="highlighter-rouge">Message#obtain(Handler)</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">Message</span> <span class="nf">obtain</span><span class="p">(</span><span class="n">Handler</span> <span class="n">h</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">Message</span> <span class="n">m</span> <span class="o">=</span> <span class="n">obtain</span><span class="o">();</span>
+        <span class="n">m</span><span class="o">.</span><span class="na">target</span> <span class="o">=</span> <span class="n">h</span><span class="o">;</span>
+        <span class="k">return</span> <span class="n">m</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>直接调用<code class="highlighter-rouge">Message#obtain()</code> - -!:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">Message</span> <span class="nf">obtain</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="n">sPoolSync</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">sPool</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">Message</span> <span class="n">m</span> <span class="o">=</span> <span class="n">sPool</span><span class="o">;</span>
+                <span class="n">sPool</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                <span class="n">m</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+                <span class="n">m</span><span class="o">.</span><span class="na">flags</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="c1">// clear in-use flag</span>
+                <span class="n">sPoolSize</span><span class="o">--;</span>
+                <span class="k">return</span> <span class="n">m</span><span class="o">;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="k">new</span> <span class="n">Message</span><span class="o">();</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>这里会先从回收池中取消息，如果没有就新创建一条消息；回收池是一个消息链表，<code class="highlighter-rouge">sPoolSync</code>是同步符号，<code class="highlighter-rouge">sPool</code>是链表头，<code class="highlighter-rouge">sPoolSize</code>是回收池中可用消息数，最大限制为<code class="highlighter-rouge">MAX_POOL_SIZE</code>（默认为50）。这些都没有太大可分析性，我们来看看<code class="highlighter-rouge">Message</code>的结构：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="kd">public</span> <span class="kt">int</span> <span class="n">what</span><span class="o">;</span>	<span class="c1">// 消息码，带Handler命名空间，因此不同Handler中相同消息码不冲突</span>
+	<span class="kd">public</span> <span class="kt">int</span> <span class="n">arg1</span><span class="o">;</span>	<span class="c1">// 整数数据</span>
+	<span class="kd">public</span> <span class="kt">int</span> <span class="n">arg2</span><span class="o">;</span>	<span class="c1">// 整数数据</span>
+	<span class="kd">public</span> <span class="n">Object</span> <span class="n">obj</span><span class="o">;</span>	<span class="c1">// 任意对象，当利用Messenger进行跨进程传递时需要继承自Parcelable</span>
+
+	<span class="kd">public</span> <span class="n">Messenger</span> <span class="n">replyTo</span><span class="o">;</span>	<span class="c1">// Messenger对象实现跨进程消息传递</span>
+	<span class="kd">public</span> <span class="kt">int</span> <span class="n">sendingUid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>	<span class="c1">// 跨进程是标记消息来源的Uid</span>
+
+	<span class="cm">/**
+	* flags可设置消息是否在使用以及是否异步
+	* FLAG_IN_USE = 1 &lt;&lt; 0，该标记只有在创建或obtain时才会清除，此时方可修改消息的相关数据及进行发送
+	* FLAG_ASYNCHRONOUS = 1 &lt;&lt; 1，标记该消息为异步消息，不受栅栏消息的影响
+	**/</span>
+	<span class="cm">/*package*/</span> <span class="kt">int</span> <span class="n">flags</span><span class="o">;</span>
+
+        <span class="cm">/*package*/</span> <span class="kt">long</span> <span class="n">when</span><span class="o">;</span>	<span class="c1">// 消息执行时间，采用SystemClock#uptimeMillis()时间base</span>
+        <span class="cm">/*package*/</span> <span class="n">Bundle</span> <span class="n">data</span><span class="o">;</span>	<span class="c1">// 消息的数据</span>
+        <span class="cm">/*package*/</span> <span class="n">Handler</span> <span class="n">target</span><span class="o">;</span>	<span class="c1">// 消息对应的Handler</span>
+        <span class="cm">/*package*/</span> <span class="n">Runnable</span> <span class="n">callback</span><span class="o">;</span> <span class="c1">// 消息对应的回调，具体参看下文中消息处理一节</span>
+
+        <span class="cm">/*package*/</span> <span class="n">Message</span> <span class="n">next</span><span class="o">;</span> <span class="c1">// 形成消息链表，以在MessageQueue以及消息回收池中使用</span>
+</code></pre>
+</div>
+<p>至此，消息的来源以及消息的结构分析完毕，其中<code class="highlighter-rouge">flags</code>由<code class="highlighter-rouge">Messag</code>自己管理，<code class="highlighter-rouge">data</code>由<code class="highlighter-rouge">getData</code>、<code class="highlighter-rouge">peekData</code>以及<code class="highlighter-rouge">setData</code>进行管理，<code class="highlighter-rouge">target</code>及<code class="highlighter-rouge">callback</code>由<code class="highlighter-rouge">Handler</code>中相关获取或发送消息的接口管理。获取到消息之后，便可以调用<code class="highlighter-rouge">Handler</code>的消息发送接口进行发送，那是如何进入<code class="highlighter-rouge">MessageQueue</code>的咧？</p>
+
+<h3 id="handlersendmessage-1">7. Handler#sendMessage中的消息怎么放入消息队列</h3>
+<p><code class="highlighter-rouge">Handler</code>中的消息发送接口除了<code class="highlighter-rouge">Handler#sendMessageAtFrontOfQueue(Message)</code>均会调用<code class="highlighter-rouge">Handler#sendMessageAtTime(Message)</code>，而这两个接口最终调用了<code class="highlighter-rouge">Handler#enqueueMessage(MessageQueue, Message, long)</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kt">boolean</span> <span class="nf">enqueueMessage</span><span class="p">(</span><span class="n">MessageQueue</span> <span class="n">queue</span><span class="o">,</span> <span class="n">Message</span> <span class="n">msg</span><span class="o">,</span> <span class="kt">long</span> <span class="n">uptimeMillis</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">msg</span><span class="o">.</span><span class="na">target</span> <span class="o">=</span> <span class="k">this</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">mAsynchronous</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">setAsynchronous</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="n">queue</span><span class="o">.</span><span class="na">enqueueMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">uptimeMillis</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>根据<code class="highlighter-rouge">Handler</code>的<code class="highlighter-rouge">mAsynchronous</code>属性设置消息的异步属性，最后调用<code class="highlighter-rouge">MessageQueue#enqueueMessage(Message, long)</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="c1">// 插入成功返回true，否则返回false</span>
+	<span class="kt">boolean</span> <span class="n">enqueueMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">,</span> <span class="kt">long</span> <span class="n">when</span><span class="o">)</span> <span class="o">{</span>
+		<span class="c1">// Handler中不允许发送target为空的消息，空消息为特殊消息（栅栏消息）</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">msg</span><span class="o">.</span><span class="na">target</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"Message must have a target."</span><span class="o">);</span>
+        <span class="o">}</span>
+        <span class="c1">// 不允许发送状态为使用中的消息</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">msg</span><span class="o">.</span><span class="na">isInUse</span><span class="o">())</span> <span class="o">{</span>
+            <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span><span class="n">msg</span> <span class="o">+</span> <span class="s">" This message is already in use."</span><span class="o">);</span>
+        <span class="o">}</span>
+
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">mQuitting</span><span class="o">)</span> <span class="o">{</span>
+            	<span class="c1">// 不允许发送消息给已退出的消息队列</span>
+                <span class="n">IllegalStateException</span> <span class="n">e</span> <span class="o">=</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span>
+                        <span class="n">msg</span><span class="o">.</span><span class="na">target</span> <span class="o">+</span> <span class="s">" sending message to a Handler on a dead thread"</span><span class="o">);</span>
+                <span class="n">Log</span><span class="o">.</span><span class="na">w</span><span class="o">(</span><span class="s">"MessageQueue"</span><span class="o">,</span> <span class="n">e</span><span class="o">.</span><span class="na">getMessage</span><span class="o">(),</span> <span class="n">e</span><span class="o">);</span>
+                <span class="n">msg</span><span class="o">.</span><span class="na">recycle</span><span class="o">();</span>
+                <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+            <span class="o">}</span>
+
+            <span class="n">msg</span><span class="o">.</span><span class="na">markInUse</span><span class="o">();</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">when</span> <span class="o">=</span> <span class="n">when</span><span class="o">;</span>
+            <span class="n">Message</span> <span class="n">p</span> <span class="o">=</span> <span class="n">mMessages</span><span class="o">;</span>
+            <span class="kt">boolean</span> <span class="n">needWake</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">p</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">when</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">when</span> <span class="o">&lt;</span> <span class="n">p</span><span class="o">.</span><span class="na">when</span><span class="o">)</span> <span class="o">{</span>
+                <span class="c1">// 消息触发时间最早，直接插在链表头部，如果当前队列阻塞则唤醒消息队列的等待，见MessageQueue#next</span>
+                <span class="n">msg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                <span class="n">mMessages</span> <span class="o">=</span> <span class="n">msg</span><span class="o">;</span>
+                <span class="n">needWake</span> <span class="o">=</span> <span class="n">mBlocked</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                <span class="c1">// 将消息插入到链表中间，如果链表头是栅栏消息并且该消息是触发时间最早的异步消息则需要进行唤醒</span>
+                <span class="n">needWake</span> <span class="o">=</span> <span class="n">mBlocked</span> <span class="o">&amp;&amp;</span> <span class="n">p</span><span class="o">.</span><span class="na">target</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">msg</span><span class="o">.</span><span class="na">isAsynchronous</span><span class="o">();</span>
+                <span class="n">Message</span> <span class="n">prev</span><span class="o">;</span>
+                <span class="k">for</span> <span class="o">(;;)</span> <span class="o">{</span>
+                    <span class="n">prev</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                    <span class="k">if</span> <span class="o">(</span><span class="n">p</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">when</span> <span class="o">&lt;</span> <span class="n">p</span><span class="o">.</span><span class="na">when</span><span class="o">)</span> <span class="o">{</span>
+                        <span class="k">break</span><span class="o">;</span>
+                    <span class="o">}</span>
+                    <span class="k">if</span> <span class="o">(</span><span class="n">needWake</span> <span class="o">&amp;&amp;</span> <span class="n">p</span><span class="o">.</span><span class="na">isAsynchronous</span><span class="o">())</span> <span class="o">{</span>
+                        <span class="n">needWake</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+                    <span class="o">}</span>
+                <span class="o">}</span>
+                <span class="n">msg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                <span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">msg</span><span class="o">;</span>
+            <span class="o">}</span>
+
+            <span class="k">if</span> <span class="o">(</span><span class="n">needWake</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">nativeWake</span><span class="o">(</span><span class="n">mPtr</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+        <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>建议查看源码，相关说明已注释在代码中。把新消息放入队列，并在必要的时候唤醒消息队列进行处理，从而就回到上述<code class="highlighter-rouge">MessageQueue#next</code>的逻辑中，然后在有可处理消息的时候将消息发送到<code class="highlighter-rouge">Looper#loop</code>中进行处理及回收。</p>
+
+<h3 id="message">8. Message的处理及回收</h3>
+<p>当消息被返回到<code class="highlighter-rouge">loop</code>中时，调用：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="n">msg</span><span class="o">.</span><span class="na">target</span><span class="o">.</span><span class="na">dispatchMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+	<span class="n">msg</span><span class="o">.</span><span class="na">recycleUnchecked</span><span class="o">();</span>
+</code></pre>
+</div>
+<p><code class="highlighter-rouge">target</code>就是<code class="highlighter-rouge">Handler</code>，于是调用：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">dispatchMessage</span><span class="p">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">msg</span><span class="o">.</span><span class="na">callback</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">handleCallback</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">mCallback</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">mCallback</span><span class="o">.</span><span class="na">handleMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">))</span> <span class="o">{</span>
+                    <span class="k">return</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+            <span class="n">handleMessage</span><span class="o">(</span><span class="n">msg</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>上述代码表明：当消息本身回调不为空时则由消息本身回调处理该消息；当<code class="highlighter-rouge">Handler</code>的<code class="highlighter-rouge">mCallback</code>不为空时则由<code class="highlighter-rouge">Handler</code>的<code class="highlighter-rouge">mCallback</code>处理消息；否则则由<code class="highlighter-rouge">Handler</code>中的钩子<code class="highlighter-rouge">handleMessage</code>进行处理。消息处理完了之后需要将消息回收：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="kt">void</span> <span class="nf">recycleUnchecked</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 标记为使用中，清除所有数据</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="n">FLAG_IN_USE</span><span class="o">;</span>
+        <span class="n">what</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="n">arg1</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="n">arg2</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="n">replyTo</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="n">sendingUid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+        <span class="n">when</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="n">callback</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+
+        <span class="c1">// 放入消息回收池</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="n">sPoolSync</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">sPoolSize</span> <span class="o">&lt;</span> <span class="n">MAX_POOL_SIZE</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">next</span> <span class="o">=</span> <span class="n">sPool</span><span class="o">;</span>
+                <span class="n">sPool</span> <span class="o">=</span> <span class="k">this</span><span class="o">;</span>
+                <span class="n">sPoolSize</span><span class="o">++;</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>至此，整个<code class="highlighter-rouge">Handler</code>的运行机制（<code class="highlighter-rouge">创建Handler -&gt; 获取消息对象 -&gt; 发送消息 -&gt; 处理消息</code>）就分析完了。</p>
+
+<h3 id="section">9. 一些其他补充</h3>
+
+<h4 id="section-1">9.1 栅栏消息</h4>
+<p><em>栅栏消息</em>：<code class="highlighter-rouge">target</code>为空的特殊消息，用于延迟<code class="highlighter-rouge">MessageQueue</code>中所有指定时间之后的同步消息，异步消息则仍可执行。发送和移除栅栏消息必须成对出现，否则可能导致<code class="highlighter-rouge">MessageQueue</code>被挂起。
+其发送移除接口在Looper中：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">int</span> <span class="nf">postSyncBarrier</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">mQueue</span><span class="o">.</span><span class="na">enqueueSyncBarrier</span><span class="o">(</span><span class="n">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">());</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="n">removeSyncBarrier</span><span class="o">(</span><span class="kt">int</span> <span class="n">token</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mQueue</span><span class="o">.</span><span class="na">removeSyncBarrier</span><span class="o">(</span><span class="n">token</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>调用了<code class="highlighter-rouge">MessageQueue#enqueueSyncBarrier(long)</code>:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="kt">int</span> <span class="nf">enqueueSyncBarrier</span><span class="p">(</span><span class="kt">long</span> <span class="n">when</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 创建一个target为空的特殊消息，并根据when插入MessageQueue中合适的位置</span>
+        <span class="c1">// 无需唤醒因为栅栏消息的目的在于阻塞消息的执行</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+            <span class="kd">final</span> <span class="kt">int</span> <span class="n">token</span> <span class="o">=</span> <span class="n">mNextBarrierToken</span><span class="o">++;</span>
+            <span class="kd">final</span> <span class="n">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">Message</span><span class="o">.</span><span class="na">obtain</span><span class="o">();</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">markInUse</span><span class="o">();</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">when</span> <span class="o">=</span> <span class="n">when</span><span class="o">;</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">arg1</span> <span class="o">=</span> <span class="n">token</span><span class="o">;</span>
+
+            <span class="n">Message</span> <span class="n">prev</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="n">Message</span> <span class="n">p</span> <span class="o">=</span> <span class="n">mMessages</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">when</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">p</span><span class="o">.</span><span class="na">when</span> <span class="o">&lt;=</span> <span class="n">when</span><span class="o">)</span> <span class="o">{</span>
+                    <span class="n">prev</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                <span class="o">}</span>
+            <span class="o">}</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">prev</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">msg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                <span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">msg</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                <span class="n">msg</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                <span class="n">mMessages</span> <span class="o">=</span> <span class="n">msg</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="k">return</span> <span class="n">token</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>必须成对出现的<code class="highlighter-rouge">MessageQueue#removeSyncBarrier(token)</code>，其中<code class="highlighter-rouge">token</code>由<code class="highlighter-rouge">enqueueSyncBarrier</code>返回:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="kt">void</span> <span class="nf">removeSyncBarrier</span><span class="p">(</span><span class="kt">int</span> <span class="n">token</span><span class="o">)</span> <span class="o">{</span>
+        <span class="c1">// 移除token对应的栅栏消息，并在必要的时候进行唤醒</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">Message</span> <span class="n">prev</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="n">Message</span> <span class="n">p</span> <span class="o">=</span> <span class="n">mMessages</span><span class="o">;</span>
+            <span class="k">while</span> <span class="o">(</span><span class="n">p</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">p</span><span class="o">.</span><span class="na">target</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">p</span><span class="o">.</span><span class="na">arg1</span> <span class="o">!=</span> <span class="n">token</span><span class="o">))</span> <span class="o">{</span>
+                <span class="n">prev</span> <span class="o">=</span> <span class="n">p</span><span class="o">;</span>
+                <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">p</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">(</span><span class="s">"The specified message queue synchronization "</span>
+                        <span class="o">+</span> <span class="s">" barrier token has not been posted or has already been removed."</span><span class="o">);</span>
+            <span class="o">}</span>
+            <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">needWake</span><span class="o">;</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">prev</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                <span class="n">needWake</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                <span class="n">mMessages</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+                <span class="n">needWake</span> <span class="o">=</span> <span class="n">mMessages</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">mMessages</span><span class="o">.</span><span class="na">target</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">;</span>
+            <span class="o">}</span>
+            <span class="n">p</span><span class="o">.</span><span class="na">recycleUnchecked</span><span class="o">();</span>
+
+            <span class="k">if</span> <span class="o">(</span><span class="n">needWake</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">mQuitting</span><span class="o">)</span> <span class="o">{</span>
+                <span class="n">nativeWake</span><span class="o">(</span><span class="n">mPtr</span><span class="o">);</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>有没有觉得，so easy - -！</p>
+
+<h4 id="idlehandler">9.2 空闲处理器（IdleHandler）</h4>
+<p><code class="highlighter-rouge">IdleHandler</code>定义在<code class="highlighter-rouge">MessageQueue</code>中：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">interface</span> <span class="nc">IdleHandler</span> <span class="o">{</span>
+        <span class="c1">// 返回true表示保持在MessageQueue的mIdleHandlers中</span>
+        <span class="kt">boolean</span> <span class="n">queueIdle</span><span class="o">();</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>具体调用时机见<code class="highlighter-rouge">MessageQueue#next</code>中的分析。</p>
+
+<h4 id="handler-2">9.3 Handler的相关接口介绍</h4>
+<p>获取消息（带不同参数）：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">final</span> <span class="n">Message</span> <span class="nf">obtainMessage</span><span class="p">(</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="n">Message</span> <span class="n">obtainMessage</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="n">Message</span> <span class="n">obtainMessage</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">,</span> <span class="kt">int</span> <span class="n">arg1</span><span class="o">,</span> <span class="kt">int</span> <span class="n">arg2</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="n">Message</span> <span class="n">obtainMessage</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">,</span> <span class="n">Object</span> <span class="n">obj</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="n">Message</span> <span class="n">obtainMessage</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">,</span> <span class="kt">int</span> <span class="n">arg1</span><span class="o">,</span> <span class="kt">int</span> <span class="n">arg2</span><span class="o">,</span> <span class="n">Object</span> <span class="n">obj</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>发送消息：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">sendEmptyMessage</span><span class="p">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">sendEmptyMessageAtTime</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">,</span> <span class="kt">long</span> <span class="n">uptimeMillis</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">sendEmptyMessageDelayed</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delayMillis</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">sendMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">sendMessageAtFrontOfQueue</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">sendMessageDelayed</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delayMillis</span><span class="o">)</span>
+    <span class="kt">boolean</span>	<span class="n">sendMessageAtTime</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">,</span> <span class="kt">long</span> <span class="n">uptimeMillis</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>发送带Callback的消息：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="n">post</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">postAtFrontOfQueue</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">postAtTime</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="n">Object</span> <span class="n">token</span><span class="o">,</span> <span class="kt">long</span> <span class="n">uptimeMillis</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">postAtTime</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="kt">long</span> <span class="n">uptimeMillis</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">postDelayed</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="kt">long</span> <span class="n">delayMillis</span><span class="o">)</span>
+</code></pre>
+</div>
+<p>移除消息：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">final</span> <span class="kt">void</span> <span class="nf">removeCallbacks</span><span class="p">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">void</span> <span class="n">removeCallbacks</span><span class="o">(</span><span class="n">Runnable</span> <span class="n">r</span><span class="o">,</span> <span class="n">Object</span> <span class="n">token</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">void</span> <span class="n">removeCallbacksAndMessages</span><span class="o">(</span><span class="n">Object</span> <span class="n">token</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">void</span> <span class="n">removeMessages</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">)</span>
+    <span class="kd">final</span> <span class="kt">void</span> <span class="n">removeMessages</span><span class="o">(</span><span class="kt">int</span> <span class="n">what</span><span class="o">,</span> <span class="n">Object</span> <span class="n">object</span><span class="o">)</span>
+</code></pre>
+</div>
+
+<h4 id="handlerthread">9.4 HandlerThread类</h4>
+<p><code class="highlighter-rouge">HandlerThread</code>类是<code class="highlighter-rouge">Handler</code>的一个辅助类，当调用<code class="highlighter-rouge">HandlerThread#start()</code>之后，会创建一个带<code class="highlighter-rouge">Looper</code>的<code class="highlighter-rouge">Thread</code>：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">run</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">mTid</span> <span class="o">=</span> <span class="n">Process</span><span class="o">.</span><span class="na">myTid</span><span class="o">();</span>
+        <span class="n">Looper</span><span class="o">.</span><span class="na">prepare</span><span class="o">();</span>
+        <span class="kd">synchronized</span> <span class="o">(</span><span class="k">this</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">mLooper</span> <span class="o">=</span> <span class="n">Looper</span><span class="o">.</span><span class="na">myLooper</span><span class="o">();</span>
+            <span class="n">notifyAll</span><span class="o">();</span>
+        <span class="o">}</span>
+        <span class="n">Process</span><span class="o">.</span><span class="na">setThreadPriority</span><span class="o">(</span><span class="n">mPriority</span><span class="o">);</span>
+        <span class="n">onLooperPrepared</span><span class="o">();</span>
+        <span class="n">Looper</span><span class="o">.</span><span class="na">loop</span><span class="o">();</span>
+        <span class="n">mTid</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>这样，我们使用非主线程<code class="highlighter-rouge">Handler</code>的时候便比较简单了：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="n">HandlerThread</span> <span class="n">t</span> <span class="o">=</span> <span class="k">new</span> <span class="n">HandlerThread</span><span class="o">(</span><span class="n">TAG</span><span class="o">);</span>
+    <span class="n">t</span><span class="o">.</span><span class="na">start</span><span class="o">();</span>
+    <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">(</span><span class="n">t</span><span class="o">.</span><span class="na">getLooper</span><span class="o">(),</span> <span class="k">new</span> <span class="n">Handler</span><span class="o">.</span><span class="na">Callback</span><span class="o">()</span> <span class="o">{</span>
+        <span class="nd">@Override</span>
+        <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">handleMessage</span><span class="o">(</span><span class="n">Message</span> <span class="n">msg</span><span class="o">)</span> <span class="o">{</span>
+             <span class="c1">// TODO: 处理消息</span>
+        <span class="o">}</span>
+    <span class="o">});</span>	
+</code></pre>
+</div>
+
+<h3 id="section-2">10. 参考文献</h3>
+<ol>
+  <li><a href="http://blog.csdn.net/luoshengyang/article/details/6817933">Android应用程序消息处理机制（Looper、Handler）分析 - - 罗升阳</a></li>
+</ol>
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+                <a class="btn btn-default" href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3" class="next">下一篇</a>
+              
+              
+                <a class="btn btn-default" href="/2016/01/JUnit%E4%B9%8BMatcher" class="previous">上一篇</a>
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
+        
+          <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
+        
+          <li><a href="/2016/01/GitHub%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97">GitHub学习指南</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+  <li><a href="https://github.com/SparkInLee/HotPatch" target="blank">HotPatch</a></li>
+</ul>
+
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-01-handler-e8-bf-90-e8-a1-8c-e6-9c-ba-e5-88-b6-e5-88-86-e6-9e-90';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 蒋黎的博客.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-01-handler-e8-bf-90-e8-a1-8c-e6-9c-ba-e5-88-b6-e5-88-86-e6-9e-90';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+
