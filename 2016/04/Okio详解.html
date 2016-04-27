@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>蒋黎的博客</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <link href="/images/favicon.png" rel="shortcut icon">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="蒋黎的博客" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <!-- <li><a href="/about.html">关于</a></li> -->
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-04-okio-e8-af-a6-e8-a7-a3">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本文主要分析<a href="https://github.com/square/okio"><code class="highlighter-rouge">Okio</code></a>的实现原理。
+<!-- excerpt split --></p>
+
+<hr />
+
+<p><strong>文章原创，允许转载，转载请注明出处。</strong></p>
+
+<hr />
+
+<h3 id="section">一、概述</h3>
+<p>Okio最初是作为Okhttp的一个组件被开发出来的，用于操作I/O流，其主要有以下几个特点：</p>
+
+<ul>
+  <li>内嵌Timeout机制，适用于read()及write() ；</li>
+  <li>采用Source、Sink取代InputStream、OutputStream作为输入输出流类型，简化API设计；</li>
+  <li>BufferedSource及BufferedSink定义了几乎所有常用流操作接口，并且无需考虑字节或字符操作的差异性（java中操作字符需将Stream包装成Reader），易于使用；</li>
+  <li>Okio中提供了将文件、socket及其他java流等转换成Source或Sink的API，方便在传统I/O流与Okio流之间切换。</li>
+</ul>
+
+<p>正是这些优势，让Okio库不仅很好的配合OkHttpClient，并且可以作为独立库用于简化I/O操作。</p>
+
+<h3 id="bytestring">二、ByteString</h3>
+<p>ByteString是基于字节数组实现的一个String变种，在底层数组不被外界破坏的情况下其实现是不可变的，类似于String。相对于String，ByteString是在字节处理上更有优势，提供了hex、base64、md5及sha256等相关实用接口，同时通过缓存utf-8字符串有效提高其utf-8编解码的效率，更适用于网络传输。</p>
+
+<h3 id="segment">三、Segment</h3>
+<p>Segment是Okio中的缓存数据结构，大小为2048字节，实现类似于nio中的ByteBuffer，采用pos、limit来操作数据。Okio中的Buffer的底层存储结构便是由Segment形成的循环双链表，从而实现更快的数据传输及复制；同时，通过设计SegmentPool来缓存一定量的空闲Segment，从而来提高Segment的分配及使用效率，SegmentPool以由Segment形成的单链表作为底层存储结构。  <br />
+Segment具有两个属性shared及owner：</p>
+
+<ul>
+  <li>shared : 表明该Segment的底层字节数组被多个Segment共用，这个属性限制该Segment不能移动或变更已有数据，从而确保数据的一致性，并且该Segment不可被SegmentPool回收;</li>
+  <li>owner : 表明底层字节数组由该Segment创建，因此该Segment拥有扩展limit的权利，即该Segment可以扩展底层字节数组的数据；</li>
+</ul>
+
+<p>Segment主要包含以下操作：</p>
+
+<h5 id="pop">1. pop()</h5>
+<p>从双链表中移除该Segment，并返回该Segment的下一个Segment；</p>
+
+<h5 id="pushsegement-segment">2. push(Segement segment)</h5>
+<p>将segment插入当前Segment之后，并返回插入的segment；</p>
+
+<h5 id="splitint-bytecount">3. split(int byteCount)</h5>
+<p>在该Segment之前新建并插入一个新的Segment，并设置底层字节数组为共享模式，通过设定两个Segment的pos及limit调整各自的可用数据范围，实现Segment的分割：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="n">Segment</span> <span class="nf">split</span><span class="p">(</span><span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">byteCount</span> <span class="o">&gt;</span> <span class="n">limit</span> <span class="o">-</span> <span class="n">pos</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">();</span>
+    <span class="n">Segment</span> <span class="n">prefix</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Segment</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+    <span class="n">prefix</span><span class="o">.</span><span class="na">limit</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">.</span><span class="na">pos</span> <span class="o">+</span> <span class="n">byteCount</span><span class="o">;</span>
+    <span class="n">pos</span> <span class="o">+=</span> <span class="n">byteCount</span><span class="o">;</span>
+    <span class="n">prev</span><span class="o">.</span><span class="na">push</span><span class="o">(</span><span class="n">prefix</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">prefix</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<h5 id="compact">4. compact()</h5>
+<p>把该Segment的数据转移至其前一个Segment，然后移除该Segment，实现Segment的压缩：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">compact</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">prev</span> <span class="o">==</span> <span class="k">this</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(!</span><span class="n">prev</span><span class="o">.</span><span class="na">owner</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span> <span class="c1">// Cannot compact: prev isn't writable.</span>
+    <span class="kt">int</span> <span class="n">byteCount</span> <span class="o">=</span> <span class="n">limit</span> <span class="o">-</span> <span class="n">pos</span><span class="o">;</span>
+    <span class="kt">int</span> <span class="n">availableByteCount</span> <span class="o">=</span> <span class="n">SIZE</span> <span class="o">-</span> <span class="n">prev</span><span class="o">.</span><span class="na">limit</span> <span class="o">+</span> <span class="o">(</span><span class="n">prev</span><span class="o">.</span><span class="na">shared</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="n">prev</span><span class="o">.</span><span class="na">pos</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&gt;</span> <span class="n">availableByteCount</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span> <span class="c1">// Cannot compact: not enough writable space.</span>
+    <span class="n">writeTo</span><span class="o">(</span><span class="n">prev</span><span class="o">,</span> <span class="n">byteCount</span><span class="o">);</span>
+    <span class="n">pop</span><span class="o">();</span>
+    <span class="n">SegmentPool</span><span class="o">.</span><span class="na">recycle</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<h5 id="writetosegment-sink-int-bytecount">5. writeTo(Segment sink, int byteCount)</h5>
+<p>将该Segment中byteCount个字节传输至sink中：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">writeTo</span><span class="p">(</span><span class="n">Segment</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(!</span><span class="n">sink</span><span class="o">.</span><span class="na">owner</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">();</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">sink</span><span class="o">.</span><span class="na">limit</span> <span class="o">+</span> <span class="n">byteCount</span> <span class="o">&gt;</span> <span class="n">SIZE</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// We can't fit byteCount bytes at the sink's current position. Shift sink first.</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">sink</span><span class="o">.</span><span class="na">shared</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">();</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">sink</span><span class="o">.</span><span class="na">limit</span> <span class="o">+</span> <span class="n">byteCount</span> <span class="o">-</span> <span class="n">sink</span><span class="o">.</span><span class="na">pos</span> <span class="o">&gt;</span> <span class="n">SIZE</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">();</span>
+      <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">sink</span><span class="o">.</span><span class="na">data</span><span class="o">,</span> <span class="n">sink</span><span class="o">.</span><span class="na">pos</span><span class="o">,</span> <span class="n">sink</span><span class="o">.</span><span class="na">data</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">sink</span><span class="o">.</span><span class="na">limit</span> <span class="o">-</span> <span class="n">sink</span><span class="o">.</span><span class="na">pos</span><span class="o">);</span>
+      <span class="n">sink</span><span class="o">.</span><span class="na">limit</span> <span class="o">-=</span> <span class="n">sink</span><span class="o">.</span><span class="na">pos</span><span class="o">;</span>
+      <span class="n">sink</span><span class="o">.</span><span class="na">pos</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+    <span class="o">}</span>
+
+    <span class="n">System</span><span class="o">.</span><span class="na">arraycopy</span><span class="o">(</span><span class="n">data</span><span class="o">,</span> <span class="n">pos</span><span class="o">,</span> <span class="n">sink</span><span class="o">.</span><span class="na">data</span><span class="o">,</span> <span class="n">sink</span><span class="o">.</span><span class="na">limit</span><span class="o">,</span> <span class="n">byteCount</span><span class="o">);</span>
+    <span class="n">sink</span><span class="o">.</span><span class="na">limit</span> <span class="o">+=</span> <span class="n">byteCount</span><span class="o">;</span>
+    <span class="n">pos</span> <span class="o">+=</span> <span class="n">byteCount</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<h3 id="timeout">四、Timeout</h3>
+
+<h5 id="timeout-1">1. 基本Timeout</h5>
+<p>Timeout通过以下属性来设定某操作的限时：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 是否有截止时间</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">hasDeadline</span><span class="o">;</span>
+<span class="c1">// 截止时间，是绝对时间，当到达该时间点时操作超时</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">deadlineNanoTime</span><span class="o">;</span>
+<span class="c1">// 超时时间，是相对时间，当到达（当前时间+超时时间）时操作超时</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">timeoutNanos</span><span class="o">;</span>
+</code></pre>
+</div>
+<p>而Timeout是通过调用以下函数抛出超时异常：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">throwIfReached</span><span class="p">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">interrupted</span><span class="o">())</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="n">InterruptedIOException</span><span class="o">(</span><span class="s">"thread interrupted"</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">hasDeadline</span> <span class="o">&amp;&amp;</span> <span class="n">deadlineNanoTime</span> <span class="o">-</span> <span class="n">System</span><span class="o">.</span><span class="na">nanoTime</span><span class="o">()</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="n">InterruptedIOException</span><span class="o">(</span><span class="s">"deadline reached"</span><span class="o">);</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<h5 id="asynctimeout">2. 异步AsyncTimeout</h5>
+<p>异步超时器的实现原理如下：</p>
+
+<ul>
+  <li><strong>将所有AsyncTimeout按超时时间点升序链接成超时器单链表；</strong></li>
+  <li><strong>启动一个WatchDog线程，采用wait/notify的模式在相应时间点移除单链表中的AsyncTimeout并调用其timeout()；</strong></li>
+</ul>
+
+<p>由于超时链表中的所有超时器共用一个看门狗定时器，因此在使用异步超时器时需特别注意：不可在timeout()中做耗时操作，否则可能会导致链表中其他超时器不准确。  <br />
+AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作完成之后调用exit()来判定是否超时：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">enter</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+	<span class="c1">// 省略无关代码</span>
+    <span class="n">scheduleTimeout</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">timeoutNanos</span><span class="o">,</span> <span class="n">hasDeadline</span><span class="o">);</span>
+<span class="o">}</span>
+<span class="kd">private</span> <span class="kd">static</span> <span class="kd">synchronized</span> <span class="kt">void</span> <span class="nf">scheduleTimeout</span><span class="p">(</span>
+      <span class="n">AsyncTimeout</span> <span class="n">node</span><span class="o">,</span> <span class="kt">long</span> <span class="n">timeoutNanos</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">hasDeadline</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 启动看门狗定时器</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">head</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">head</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AsyncTimeout</span><span class="o">();</span>
+      <span class="k">new</span> <span class="n">Watchdog</span><span class="o">().</span><span class="na">start</span><span class="o">();</span>
+    <span class="o">}</span>
+
+    <span class="c1">// 将AsyncTimeout插入超时链表合适位置</span>
+    <span class="kt">long</span> <span class="n">remainingNanos</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="na">remainingNanos</span><span class="o">(</span><span class="n">now</span><span class="o">);</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">AsyncTimeout</span> <span class="n">prev</span> <span class="o">=</span> <span class="n">head</span><span class="o">;</span> <span class="kc">true</span><span class="o">;</span> <span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="na">next</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="n">remainingNanos</span> <span class="o">&lt;</span> <span class="n">prev</span><span class="o">.</span><span class="na">next</span><span class="o">.</span><span class="na">remainingNanos</span><span class="o">(</span><span class="n">now</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">node</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+        <span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">node</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">prev</span> <span class="o">==</span> <span class="n">head</span><span class="o">)</span> <span class="o">{</span>
+          <span class="c1">// 当前插入AsyncTimeout的超时时间点最近，因此之前看门狗中定时时间可能失效，需唤醒重新计算</span>
+          <span class="n">AsyncTimeout</span><span class="o">.</span><span class="na">class</span><span class="o">.</span><span class="na">notify</span><span class="o">();</span>
+        <span class="o">}</span>
+        <span class="k">break</span><span class="o">;</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">exit</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+   <span class="k">return</span> <span class="n">cancelScheduledTimeout</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+<span class="o">}</span>
+<span class="kd">private</span> <span class="kd">static</span> <span class="kd">synchronized</span> <span class="kt">boolean</span> <span class="nf">cancelScheduledTimeout</span><span class="p">(</span><span class="n">AsyncTimeout</span> <span class="n">node</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// 移除相应超时器</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">AsyncTimeout</span> <span class="n">prev</span> <span class="o">=</span> <span class="n">head</span><span class="o">;</span> <span class="n">prev</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">;</span> <span class="n">prev</span> <span class="o">=</span> <span class="n">prev</span><span class="o">.</span><span class="na">next</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">==</span> <span class="n">node</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">prev</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="na">next</span><span class="o">;</span>
+        <span class="n">node</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="c1">// 若该超时器不存在于链表中，说明已经超时</span>
+    <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
+  <span class="o">}</span>
+</code></pre>
+</div>
+
+<h3 id="buffer">五、Buffer</h3>
+<p>前文中已经提及：Buffer的底层数据存储结构是由Segment组成的循环双链表，数据的复制和传输通过操作Segment的归属及limit、pos来实现，因此非常高效。另一方面，Buffer实现了BufferedSource及BufferedSink中的相关接口，因此实现了绝大部分常用字节及字符操作接口。  <br />
+首先，先感受下Source及Sink中的基本接口的实现：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="nd">@Override</span> 
+<span class="kd">public</span> <span class="kt">long</span> <span class="nf">read</span><span class="p">(</span><span class="n">Buffer</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">sink</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"sink == null"</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"byteCount &lt; 0: "</span> <span class="o">+</span> <span class="n">byteCount</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1L</span><span class="o">;</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&gt;</span> <span class="n">size</span><span class="o">)</span> <span class="n">byteCount</span> <span class="o">=</span> <span class="n">size</span><span class="o">;</span>
+    <span class="n">sink</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">byteCount</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">byteCount</span><span class="o">;</span>
+<span class="o">}</span>
+
+<span class="nd">@Override</span> 
+<span class="kd">public</span> <span class="kt">void</span> <span class="nf">write</span><span class="p">(</span><span class="n">Buffer</span> <span class="n">source</span><span class="o">,</span> <span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">source</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"source == null"</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">source</span> <span class="o">==</span> <span class="k">this</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"source == this"</span><span class="o">);</span>
+    <span class="n">checkOffsetAndCount</span><span class="o">(</span><span class="n">source</span><span class="o">.</span><span class="na">size</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">byteCount</span><span class="o">);</span>
+
+    <span class="k">while</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// Is a prefix of the source's head segment all that we need to move?</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&lt;</span> <span class="o">(</span><span class="n">source</span><span class="o">.</span><span class="na">head</span><span class="o">.</span><span class="na">limit</span> <span class="o">-</span> <span class="n">source</span><span class="o">.</span><span class="na">head</span><span class="o">.</span><span class="na">pos</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">Segment</span> <span class="n">tail</span> <span class="o">=</span> <span class="n">head</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">?</span> <span class="n">head</span><span class="o">.</span><span class="na">prev</span> <span class="o">:</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">tail</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="n">tail</span><span class="o">.</span><span class="na">owner</span>
+            <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">+</span> <span class="n">tail</span><span class="o">.</span><span class="na">limit</span> <span class="o">-</span> <span class="o">(</span><span class="n">tail</span><span class="o">.</span><span class="na">shared</span> <span class="o">?</span> <span class="mi">0</span> <span class="o">:</span> <span class="n">tail</span><span class="o">.</span><span class="na">pos</span><span class="o">)</span> <span class="o">&lt;=</span> <span class="n">Segment</span><span class="o">.</span><span class="na">SIZE</span><span class="o">))</span> <span class="o">{</span>
+          <span class="c1">// Our existing segments are sufficient. Move bytes from source's head to our tail.</span>
+          <span class="n">source</span><span class="o">.</span><span class="na">head</span><span class="o">.</span><span class="na">writeTo</span><span class="o">(</span><span class="n">tail</span><span class="o">,</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">byteCount</span><span class="o">);</span>
+          <span class="n">source</span><span class="o">.</span><span class="na">size</span> <span class="o">-=</span> <span class="n">byteCount</span><span class="o">;</span>
+          <span class="n">size</span> <span class="o">+=</span> <span class="n">byteCount</span><span class="o">;</span>
+          <span class="k">return</span><span class="o">;</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+          <span class="c1">// We're going to need another segment. Split the source's head</span>
+          <span class="c1">// segment in two, then move the first of those two to this buffer.</span>
+          <span class="n">source</span><span class="o">.</span><span class="na">head</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="na">head</span><span class="o">.</span><span class="na">split</span><span class="o">((</span><span class="kt">int</span><span class="o">)</span> <span class="n">byteCount</span><span class="o">);</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="c1">// Remove the source's head segment and append it to our tail.</span>
+      <span class="n">Segment</span> <span class="n">segmentToMove</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="na">head</span><span class="o">;</span>
+      <span class="kt">long</span> <span class="n">movedByteCount</span> <span class="o">=</span> <span class="n">segmentToMove</span><span class="o">.</span><span class="na">limit</span> <span class="o">-</span> <span class="n">segmentToMove</span><span class="o">.</span><span class="na">pos</span><span class="o">;</span>
+      <span class="n">source</span><span class="o">.</span><span class="na">head</span> <span class="o">=</span> <span class="n">segmentToMove</span><span class="o">.</span><span class="na">pop</span><span class="o">();</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">head</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">head</span> <span class="o">=</span> <span class="n">segmentToMove</span><span class="o">;</span>
+        <span class="n">head</span><span class="o">.</span><span class="na">next</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="na">prev</span> <span class="o">=</span> <span class="n">head</span><span class="o">;</span>
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="n">Segment</span> <span class="n">tail</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="na">prev</span><span class="o">;</span>
+        <span class="n">tail</span> <span class="o">=</span> <span class="n">tail</span><span class="o">.</span><span class="na">push</span><span class="o">(</span><span class="n">segmentToMove</span><span class="o">);</span>
+        <span class="n">tail</span><span class="o">.</span><span class="na">compact</span><span class="o">();</span>
+      <span class="o">}</span>
+      <span class="n">source</span><span class="o">.</span><span class="na">size</span> <span class="o">-=</span> <span class="n">movedByteCount</span><span class="o">;</span>
+      <span class="n">size</span> <span class="o">+=</span> <span class="n">movedByteCount</span><span class="o">;</span>
+      <span class="n">byteCount</span> <span class="o">-=</span> <span class="n">movedByteCount</span><span class="o">;</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+<p>以上是Buffer中的实现源码，其在实现write函数时尽可能减少cpu及memory的消耗，建议查看源码中write函数的注释，这样可以更好的理解该方法设计的理念。在以上代码中，包含了以Segment为底层存储结构的Buffer在字节操作上的基本方式，其他所有字节或字符操作接口的实现均与此类似。  <br />
+主要接口包括：</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">BufferedSource</span> <span class="kd">extends</span> <span class="n">Source</span> <span class="o">{</span>
+  <span class="n">Buffer</span> <span class="n">buffer</span><span class="o">();</span>
+  <span class="kt">boolean</span> <span class="n">exhausted</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">void</span> <span class="n">require</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">boolean</span> <span class="n">request</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">byte</span> <span class="n">readByte</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">short</span> <span class="n">readShort</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">short</span> <span class="n">readShortLe</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">int</span> <span class="n">readInt</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">int</span> <span class="n">readIntLe</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">readLong</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">readLongLe</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">readDecimalLong</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">readHexadecimalUnsignedLong</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">void</span> <span class="n">skip</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">ByteString</span> <span class="n">readByteString</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">ByteString</span> <span class="n">readByteString</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">byte</span><span class="o">[]</span> <span class="n">readByteArray</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">byte</span><span class="o">[]</span> <span class="n">readByteArray</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">int</span> <span class="n">read</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">sink</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">void</span> <span class="n">readFully</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">sink</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">int</span> <span class="n">read</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">void</span> <span class="n">readFully</span><span class="o">(</span><span class="n">Buffer</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">readAll</span><span class="o">(</span><span class="n">Sink</span> <span class="n">sink</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">String</span> <span class="n">readUtf8</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">String</span> <span class="n">readUtf8</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">String</span> <span class="n">readUtf8Line</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">String</span> <span class="n">readUtf8LineStrict</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">int</span> <span class="n">readUtf8CodePoint</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">String</span> <span class="n">readString</span><span class="o">(</span><span class="n">Charset</span> <span class="n">charset</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">String</span> <span class="n">readString</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">,</span> <span class="n">Charset</span> <span class="n">charset</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">indexOf</span><span class="o">(</span><span class="kt">byte</span> <span class="n">b</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">indexOf</span><span class="o">(</span><span class="kt">byte</span> <span class="n">b</span><span class="o">,</span> <span class="kt">long</span> <span class="n">fromIndex</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">indexOf</span><span class="o">(</span><span class="n">ByteString</span> <span class="n">bytes</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">indexOf</span><span class="o">(</span><span class="n">ByteString</span> <span class="n">bytes</span><span class="o">,</span> <span class="kt">long</span> <span class="n">fromIndex</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">indexOfElement</span><span class="o">(</span><span class="n">ByteString</span> <span class="n">targetBytes</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">indexOfElement</span><span class="o">(</span><span class="n">ByteString</span> <span class="n">targetBytes</span><span class="o">,</span> <span class="kt">long</span> <span class="n">fromIndex</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">InputStream</span> <span class="n">inputStream</span><span class="o">();</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">BufferedSink</span> <span class="kd">extends</span> <span class="n">Sink</span> <span class="o">{</span>
+  <span class="n">Buffer</span> <span class="n">buffer</span><span class="o">();</span>
+  <span class="n">BufferedSink</span> <span class="n">write</span><span class="o">(</span><span class="n">ByteString</span> <span class="n">byteString</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">write</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">source</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">write</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">source</span><span class="o">,</span> <span class="kt">int</span> <span class="n">offset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="kt">long</span> <span class="n">writeAll</span><span class="o">(</span><span class="n">Source</span> <span class="n">source</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">write</span><span class="o">(</span><span class="n">Source</span> <span class="n">source</span><span class="o">,</span> <span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeUtf8</span><span class="o">(</span><span class="n">String</span> <span class="n">string</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeUtf8</span><span class="o">(</span><span class="n">String</span> <span class="n">string</span><span class="o">,</span> <span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeUtf8CodePoint</span><span class="o">(</span><span class="kt">int</span> <span class="n">codePoint</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeString</span><span class="o">(</span><span class="n">String</span> <span class="n">string</span><span class="o">,</span> <span class="n">Charset</span> <span class="n">charset</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeString</span><span class="o">(</span><span class="n">String</span> <span class="n">string</span><span class="o">,</span> <span class="kt">int</span> <span class="n">beginIndex</span><span class="o">,</span> <span class="kt">int</span> <span class="n">endIndex</span><span class="o">,</span> <span class="n">Charset</span> <span class="n">charset</span><span class="o">)</span>
+      <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeByte</span><span class="o">(</span><span class="kt">int</span> <span class="n">b</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeShort</span><span class="o">(</span><span class="kt">int</span> <span class="n">s</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeShortLe</span><span class="o">(</span><span class="kt">int</span> <span class="n">s</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeInt</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeIntLe</span><span class="o">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeLong</span><span class="o">(</span><span class="kt">long</span> <span class="n">v</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeLongLe</span><span class="o">(</span><span class="kt">long</span> <span class="n">v</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeDecimalLong</span><span class="o">(</span><span class="kt">long</span> <span class="n">v</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">writeHexadecimalUnsignedLong</span><span class="o">(</span><span class="kt">long</span> <span class="n">v</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">emitCompleteSegments</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">BufferedSink</span> <span class="n">emit</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
+  <span class="n">OutputStream</span> <span class="n">outputStream</span><span class="o">();</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+<p>相关接口的具体实现参考<a href="https://github.com/square/okio/blob/master/okio/src/main/java/okio/Buffer.java">Buffer的源码</a>。</p>
+
+<h3 id="okio">六、Okio</h3>
+<p>Okio中主要提供将其他数据源包装成Source、Sink的接口以及将Source、Sink包装成Buffer的接口，以Source为例说明：</p>
+
+<h5 id="source">1. 将其他数据源包装成Source</h5>
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 对于本身没有超时机制的流（如socket）采用AsyncTimeout实现超时机制</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="n">Source</span> <span class="nf">source</span><span class="p">(</span><span class="kd">final</span> <span class="n">Socket</span> <span class="n">socket</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">socket</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"socket == null"</span><span class="o">);</span>
+    <span class="n">AsyncTimeout</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="o">(</span><span class="n">socket</span><span class="o">);</span>
+    <span class="n">Source</span> <span class="n">source</span> <span class="o">=</span> <span class="n">source</span><span class="o">(</span><span class="n">socket</span><span class="o">.</span><span class="na">getInputStream</span><span class="o">(),</span> <span class="n">timeout</span><span class="o">);</span>
+    <span class="k">return</span> <span class="n">timeout</span><span class="o">.</span><span class="na">source</span><span class="o">(</span><span class="n">source</span><span class="o">);</span>
+<span class="o">}</span>
+
+<span class="c1">// 对于本身具备超时机制的流（如文件流）根据其本身超时属性来调用超时回调</span>
+<span class="kd">public</span> <span class="kd">static</span> <span class="n">Sink</span> <span class="nf">sink</span><span class="p">(</span><span class="kd">final</span> <span class="n">OutputStream</span> <span class="n">out</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">sink</span><span class="o">(</span><span class="n">out</span><span class="o">,</span> <span class="k">new</span> <span class="n">Timeout</span><span class="o">());</span>
+<span class="o">}</span>
+
+<span class="kd">private</span> <span class="kd">static</span> <span class="n">Sink</span> <span class="nf">sink</span><span class="p">(</span><span class="kd">final</span> <span class="n">OutputStream</span> <span class="n">out</span><span class="o">,</span> <span class="kd">final</span> <span class="n">Timeout</span> <span class="n">timeout</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">out</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"out == null"</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">timeout</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"timeout == null"</span><span class="o">);</span>
+
+    <span class="k">return</span> <span class="k">new</span> <span class="n">Sink</span><span class="o">()</span> <span class="o">{</span>
+      <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="n">write</span><span class="o">(</span><span class="n">Buffer</span> <span class="n">source</span><span class="o">,</span> <span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">checkOffsetAndCount</span><span class="o">(</span><span class="n">source</span><span class="o">.</span><span class="na">size</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">byteCount</span><span class="o">);</span>
+        <span class="k">while</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">timeout</span><span class="o">.</span><span class="na">throwIfReached</span><span class="o">();</span>
+          <span class="n">Segment</span> <span class="n">head</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="na">head</span><span class="o">;</span>
+          <span class="kt">int</span> <span class="n">toCopy</span> <span class="o">=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">Math</span><span class="o">.</span><span class="na">min</span><span class="o">(</span><span class="n">byteCount</span><span class="o">,</span> <span class="n">head</span><span class="o">.</span><span class="na">limit</span> <span class="o">-</span> <span class="n">head</span><span class="o">.</span><span class="na">pos</span><span class="o">);</span>
+          <span class="n">out</span><span class="o">.</span><span class="na">write</span><span class="o">(</span><span class="n">head</span><span class="o">.</span><span class="na">data</span><span class="o">,</span> <span class="n">head</span><span class="o">.</span><span class="na">pos</span><span class="o">,</span> <span class="n">toCopy</span><span class="o">);</span>
+
+          <span class="n">head</span><span class="o">.</span><span class="na">pos</span> <span class="o">+=</span> <span class="n">toCopy</span><span class="o">;</span>
+          <span class="n">byteCount</span> <span class="o">-=</span> <span class="n">toCopy</span><span class="o">;</span>
+          <span class="n">source</span><span class="o">.</span><span class="na">size</span> <span class="o">-=</span> <span class="n">toCopy</span><span class="o">;</span>
+
+          <span class="k">if</span> <span class="o">(</span><span class="n">head</span><span class="o">.</span><span class="na">pos</span> <span class="o">==</span> <span class="n">head</span><span class="o">.</span><span class="na">limit</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">source</span><span class="o">.</span><span class="na">head</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="na">pop</span><span class="o">();</span>
+            <span class="n">SegmentPool</span><span class="o">.</span><span class="na">recycle</span><span class="o">(</span><span class="n">head</span><span class="o">);</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="n">flush</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">out</span><span class="o">.</span><span class="na">flush</span><span class="o">();</span>
+      <span class="o">}</span>
+
+      <span class="nd">@Override</span> <span class="kd">public</span> <span class="kt">void</span> <span class="n">close</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+        <span class="n">out</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+      <span class="o">}</span>
+
+      <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">Timeout</span> <span class="n">timeout</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="n">timeout</span><span class="o">;</span>
+      <span class="o">}</span>
+
+      <span class="nd">@Override</span> <span class="kd">public</span> <span class="n">String</span> <span class="n">toString</span><span class="o">()</span> <span class="o">{</span>
+        <span class="k">return</span> <span class="s">"sink("</span> <span class="o">+</span> <span class="n">out</span> <span class="o">+</span> <span class="s">")"</span><span class="o">;</span>
+      <span class="o">}</span>
+    <span class="o">};</span>
+  <span class="o">}</span>
+</code></pre>
+</div>
+
+<h5 id="sourcebuffersource">2. 将Source包装成BufferSource</h5>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span> <span class="n">BufferedSource</span> <span class="nf">buffer</span><span class="p">(</span><span class="n">Source</span> <span class="n">source</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">source</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"source == null"</span><span class="o">);</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="n">RealBufferedSource</span><span class="o">(</span><span class="n">source</span><span class="o">);</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+<p>其中RealBufferedSource基于装饰模式实现，将source中的数据传递给Buffer，由Buffer来提供操作的具体实现。
+<br />
+<br />
+<br />
+<strong>至此，Okio的主要实现就分析完了，由于其设计理念与java中I/O流的设计理念相近，因此也可以参照java包装流的原理实现Source及Sink的包装，从而实现诸如加解密、压缩解压缩等效果。</strong></p>
+
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+              
+                <a class="btn btn-default" href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3" class="previous">上一篇</a>
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
+        
+          <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
+        
+          <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+  <li><a href="https://github.com/SparkInLee/HotPatch" target="blank">HotPatch</a></li>
+</ul>
+
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-04-okio-e8-af-a6-e8-a7-a3';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 蒋黎的博客.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-04-okio-e8-af-a6-e8-a7-a3';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+
