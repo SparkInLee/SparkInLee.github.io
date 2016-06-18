@@ -86,7 +86,7 @@
 
 <h4 id="picassobuilderpicasso">1. 利用<code class="highlighter-rouge">Picasso.Builder</code>配置<code class="highlighter-rouge">Picasso</code>，主要配置项有：</h4>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// Application运行上下文</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// Application运行上下文</span>
 <span class="kd">private</span> <span class="kd">final</span> <span class="n">Context</span> <span class="n">context</span><span class="o">;</span>
 
 <span class="c1">// 图片网络下载器</span>
@@ -128,7 +128,7 @@
 <h5 id="executorservice">1.3 默认<code class="highlighter-rouge">ExecutorService</code></h5>
 <p>默认<code class="highlighter-rouge">ExecutorService</code>为<code class="highlighter-rouge">PicassoExecutorService</code>：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">super</span><span class="o">(</span><span class="n">DEFAULT_THREAD_COUNT</span><span class="o">,</span> <span class="n">DEFAULT_THREAD_COUNT</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">TimeUnit</span><span class="o">.</span><span class="na">MILLISECONDS</span><span class="o">,</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">super</span><span class="o">(</span><span class="n">DEFAULT_THREAD_COUNT</span><span class="o">,</span> <span class="n">DEFAULT_THREAD_COUNT</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">TimeUnit</span><span class="o">.</span><span class="na">MILLISECONDS</span><span class="o">,</span>
         <span class="k">new</span> <span class="n">PriorityBlockingQueue</span><span class="o">&lt;</span><span class="n">Runnable</span><span class="o">&gt;(),</span> <span class="k">new</span> <span class="n">Utils</span><span class="o">.</span><span class="na">PicassoThreadFactory</span><span class="o">());</span>
 </code></pre>
 </div>
@@ -149,7 +149,7 @@
 
 <h5 id="dispatcher">1.5 默认<code class="highlighter-rouge">Dispatcher</code></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 事件分发Handler</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 事件分发Handler</span>
 <span class="kd">final</span> <span class="n">DispatcherThread</span> <span class="n">dispatcherThread</span><span class="o">;</span>
 <span class="kd">final</span> <span class="n">Handler</span> <span class="n">handler</span><span class="o">;</span>
 
@@ -184,7 +184,7 @@
 <h5 id="section-2">1.6 默认链式图片请求处理器</h5>
 <p><code class="highlighter-rouge">RequestHandler</code>是图片处理器基类，主要包含以下接口：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 是否能处理当前请求</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 是否能处理当前请求</span>
 <span class="kd">public</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">canHandleRequest</span><span class="p">(</span><span class="n">Request</span> <span class="n">data</span><span class="o">);</span>
 
 <span class="c1">// 根据当前请求以及网络策略加载相应图片，并将结果包装成Result</span>
@@ -208,7 +208,7 @@
 </div>
 <p>处理器根据请求完成图片加载之后会将得到的<code class="highlighter-rouge">Bitmap</code>或者<code class="highlighter-rouge">InputStream</code>包装成<code class="highlighter-rouge">Result</code>返回，用于后续图片处理，<code class="highlighter-rouge">Picasso</code>会添加7个默认处理器，如下所示：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">List</span><span class="o">&lt;</span><span class="n">RequestHandler</span><span class="o">&gt;</span> <span class="n">allRequestHandlers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">RequestHandler</span><span class="o">&gt;();</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">List</span><span class="o">&lt;</span><span class="n">RequestHandler</span><span class="o">&gt;</span> <span class="n">allRequestHandlers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">RequestHandler</span><span class="o">&gt;();</span>
 <span class="n">allRequestHandlers</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">ResourceRequestHandler</span><span class="o">(</span><span class="n">context</span><span class="o">));</span>
 <span class="k">if</span> <span class="o">(</span><span class="n">extraRequestHandlers</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
   <span class="n">allRequestHandlers</span><span class="o">.</span><span class="na">addAll</span><span class="o">(</span><span class="n">extraRequestHandlers</span><span class="o">);</span>
@@ -226,7 +226,7 @@
 <p><strong>ResourceRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，SCHEME_ANDROID_RESOURCE=‘android.resource’</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，SCHEME_ANDROID_RESOURCE=‘android.resource’</span>
 <span class="n">resourceId</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">SCHEME_ANDROID_RESOURCE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">())</span>
 </code></pre>
 </div>
@@ -236,7 +236,7 @@
 <p><strong>ContactsPhotoRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 可处理Uri</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 可处理Uri</span>
 <span class="kd">static</span> <span class="o">{</span>
     <span class="n">matcher</span> <span class="o">=</span> <span class="k">new</span> <span class="n">UriMatcher</span><span class="o">(</span><span class="n">UriMatcher</span><span class="o">.</span><span class="na">NO_MATCH</span><span class="o">);</span>
     <span class="n">matcher</span><span class="o">.</span><span class="na">addURI</span><span class="o">(</span><span class="n">ContactsContract</span><span class="o">.</span><span class="na">AUTHORITY</span><span class="o">,</span> <span class="s">"contacts/lookup/*/#"</span><span class="o">,</span> <span class="n">ID_LOOKUP</span><span class="o">);</span>
@@ -258,7 +258,7 @@
 <p><strong>MediaStoreRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，SCHEME_CONTENT='content'，AUTHORITY = "media";</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，SCHEME_CONTENT='content'，AUTHORITY = "media";</span>
 <span class="o">(</span><span class="n">SCHEME_CONTENT</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">())</span>
             <span class="o">&amp;&amp;</span> <span class="n">MediaStore</span><span class="o">.</span><span class="na">AUTHORITY</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getAuthority</span><span class="o">()));</span>
 </code></pre>
@@ -269,7 +269,7 @@
 <p><strong>ContentStreamRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，SCHEME_CONTENT='content'</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，SCHEME_CONTENT='content'</span>
 <span class="n">SCHEME_CONTENT</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">());</span>
 </code></pre>
 </div>
@@ -279,7 +279,7 @@
 <p><strong>AssetRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，‘file://packagename/anroid_asset/...’</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 匹配规则，‘file://packagename/anroid_asset/...’</span>
 <span class="o">(</span><span class="n">SCHEME_FILE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">())</span>
         <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">uri</span><span class="o">.</span><span class="na">getPathSegments</span><span class="o">().</span><span class="na">isEmpty</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="n">ANDROID_ASSET</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">uri</span><span class="o">.</span><span class="na">getPathSegments</span><span class="o">().</span><span class="na">get</span><span class="o">(</span><span class="mi">0</span><span class="o">)));</span>
 </code></pre>
@@ -290,7 +290,7 @@
 <p><strong>FileRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">//匹配规则，SCHEME_FILE=‘file’</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">//匹配规则，SCHEME_FILE=‘file’</span>
 <span class="n">SCHEME_FILE</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">data</span><span class="o">.</span><span class="na">uri</span><span class="o">.</span><span class="na">getScheme</span><span class="o">());</span>
 </code></pre>
 </div>
@@ -300,14 +300,14 @@
 <p><strong>NetworkRequestHandler</strong>  <br />
 <em>canHandleRequest:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="o">(</span><span class="n">SCHEME_HTTP</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">scheme</span><span class="o">)</span> <span class="o">||</span> <span class="n">SCHEME_HTTPS</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">scheme</span><span class="o">));</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="o">(</span><span class="n">SCHEME_HTTP</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">scheme</span><span class="o">)</span> <span class="o">||</span> <span class="n">SCHEME_HTTPS</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">scheme</span><span class="o">));</span>
 </code></pre>
 </div>
 <p><em>load:</em>  <br />
  获取磁盘缓存或网络上的图片，封装成<code class="highlighter-rouge">Result(bitmap, loadedFrom)</code>或者<code class="highlighter-rouge">Result(in, loadedFrom)</code></p>
 
 <h4 id="section-3">2. 未配置参数</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// key为Action.target，Pause时记录相应的Action，Resume的时候记录的Action</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// key为Action.target，Pause时记录相应的Action，Resume的时候记录的Action</span>
 <span class="kd">final</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">Object</span><span class="o">,</span> <span class="n">Action</span><span class="o">&gt;</span> <span class="n">targetToAction</span><span class="o">;</span>
 <span class="kd">final</span> <span class="n">Map</span><span class="o">&lt;</span><span class="n">ImageView</span><span class="o">,</span> <span class="n">DeferredRequestCreator</span><span class="o">&gt;</span> <span class="n">targetToDeferredRequestCreator</span><span class="o">;</span>
 
@@ -322,7 +322,7 @@
 
 <h4 id="picassoload">1. 调用<code class="highlighter-rouge">Picasso.load</code>启动图片加载流程：</h4>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="n">RequestCreator</span> <span class="nf">load</span><span class="p">(</span><span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="n">RequestCreator</span> <span class="nf">load</span><span class="p">(</span><span class="n">Uri</span> <span class="n">uri</span><span class="o">)</span>
 <span class="kd">public</span> <span class="n">RequestCreator</span> <span class="nf">load</span><span class="p">(</span><span class="n">String</span> <span class="n">path</span><span class="o">)</span>
 <span class="kd">public</span> <span class="n">RequestCreator</span> <span class="nf">load</span><span class="p">(</span><span class="n">File</span> <span class="n">file</span><span class="o">)</span>
 <span class="kd">public</span> <span class="n">RequestCreator</span> <span class="nf">load</span><span class="p">(</span><span class="kt">int</span> <span class="n">resourceId</span><span class="o">)</span>
@@ -333,7 +333,7 @@
 <h4 id="requestcreator">2. RequestCreator的工作</h4>
 <p><code class="highlighter-rouge">RequestCreator</code>就是一个<code class="highlighter-rouge">Request</code>的生成器，其有一些基本配置项：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 设置图片时是否做渐显效果</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 设置图片时是否做渐显效果</span>
 <span class="kd">private</span> <span class="kt">boolean</span> <span class="n">noFade</span><span class="o">;</span>
 <span class="c1">// 是否延迟加载图片，可延迟至ImageView的宽高确定后再发起加载请求</span>
 <span class="kd">private</span> <span class="kt">boolean</span> <span class="n">deferred</span><span class="o">;</span>
@@ -357,7 +357,7 @@
 </div>
 <p>除了这些配置项之外，还可以通过一个<code class="highlighter-rouge">Request.Builder</code>来配置<code class="highlighter-rouge">Request</code>：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 图片加载uri</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 图片加载uri</span>
 <span class="kd">private</span> <span class="n">Uri</span> <span class="n">uri</span><span class="o">;</span>
 <span class="c1">// 图片资源Id</span>
 <span class="kd">private</span> <span class="kt">int</span> <span class="n">resourceId</span><span class="o">;</span>
@@ -386,7 +386,7 @@
 </div>
 <p>配置完成之后便可以调用<code class="highlighter-rouge">Request.Builder.build</code>生成<code class="highlighter-rouge">Request</code>，而创建的<code class="highlighter-rouge">Request</code>还必须设置以下属性：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 请求唯一Id</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 请求唯一Id</span>
 <span class="kt">int</span> <span class="n">id</span><span class="o">;</span>
 <span class="c1">// 请求发起时间</span>
 <span class="kt">long</span> <span class="n">started</span><span class="o">;</span>
@@ -396,7 +396,7 @@
 </div>
 <p>这几个属性是在调用<code class="highlighter-rouge">RequestCreator</code>发起请求的接口是设置的，其提供以下发起请求的接口:</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 在当前线程获取图片</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 在当前线程获取图片</span>
 <span class="kd">public</span> <span class="n">Bitmap</span> <span class="nf">get</span><span class="p">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> 
 
 <span class="c1">// 由Dispatcher统一调度根据Action生成BitmapHunter，然后将BitmapHunter提交给PicassoExecutorService，</span>
@@ -415,7 +415,7 @@
 <h5 id="get">get()</h5>
 <p>这是所有发起请求接口中唯一不提交到<code class="highlighter-rouge">PicassoExecutorService</code>执行的接口，由于是直接在当前线程加载图片，因此该接口禁止在主线程中调用。首先生成<code class="highlighter-rouge">Request</code>:</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">private</span> <span class="n">Request</span> <span class="nf">createRequest</span><span class="p">(</span><span class="kt">long</span> <span class="n">started</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">private</span> <span class="n">Request</span> <span class="nf">createRequest</span><span class="p">(</span><span class="kt">long</span> <span class="n">started</span><span class="o">)</span> <span class="o">{</span>
     <span class="kt">int</span> <span class="n">id</span> <span class="o">=</span> <span class="n">nextId</span><span class="o">.</span><span class="na">getAndIncrement</span><span class="o">();</span>
     <span class="n">Request</span> <span class="n">request</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">build</span><span class="o">();</span>
     <span class="n">request</span><span class="o">.</span><span class="na">id</span> <span class="o">=</span> <span class="n">id</span><span class="o">;</span>
@@ -432,7 +432,7 @@
 </div>
 <p>以上源码已删除日志相关的部分，首先通过<code class="highlighter-rouge">Request.Builder</code>创建出<code class="highlighter-rouge">Request</code>，然后用<code class="highlighter-rouge">Picasso</code>中配置的<code class="highlighter-rouge">Request</code>转换器进行预处理后得到最终<code class="highlighter-rouge">Request</code>，然后生成该<code class="highlighter-rouge">Request</code>的请求<code class="highlighter-rouge">Key</code>，并然后创建<code class="highlighter-rouge">GetAction</code>，<code class="highlighter-rouge">Action</code>标识一次请求行为，作为以下数据的载体：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">final</span> <span class="n">Picasso</span> <span class="n">picasso</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">final</span> <span class="n">Picasso</span> <span class="n">picasso</span><span class="o">;</span>
 
 <span class="c1">// 请求发起target的弱引用，与Picasso中的cleanThread配合实现对无效Action的清除</span>
 <span class="kd">final</span> <span class="n">WeakReference</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">target</span><span class="o">;</span>
@@ -455,14 +455,14 @@
 </div>
 <p>同时<code class="highlighter-rouge">Action</code>要求子类实现图片加载成功或失败的回调方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">complete</span><span class="p">(</span><span class="n">Bitmap</span> <span class="n">result</span><span class="o">,</span> <span class="n">Picasso</span><span class="o">.</span><span class="na">LoadedFrom</span> <span class="n">from</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">complete</span><span class="p">(</span><span class="n">Bitmap</span> <span class="n">result</span><span class="o">,</span> <span class="n">Picasso</span><span class="o">.</span><span class="na">LoadedFrom</span> <span class="n">from</span><span class="o">);</span>
 <span class="kd">abstract</span> <span class="kt">void</span> <span class="nf">error</span><span class="p">(</span><span class="o">);</span>
 </code></pre>
 </div>
 <p>而继承自<code class="highlighter-rouge">Action</code>的<code class="highlighter-rouge">GetAction</code>在这两个方法中不做任何处理，后续会解释为什么不用做处理。
 获得<code class="highlighter-rouge">Action</code>之后，便使用该<code class="highlighter-rouge">Action</code>创建<code class="highlighter-rouge">BitmapHunter</code>，该类继承自<code class="highlighter-rouge">Runnable</code>，因此可以提交给<code class="highlighter-rouge">ExecutorService</code>执行，它包含以下属性：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 递增生成的序列号，用于将优先级一样的请求实现为先入先出队列</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 递增生成的序列号，用于将优先级一样的请求实现为先入先出队列</span>
 <span class="kd">final</span> <span class="kt">int</span> <span class="n">sequence</span><span class="o">;</span>
 
 <span class="c1">// 以下数据含义见RequestCreator</span>
@@ -507,7 +507,7 @@
 <h5 id="intotarget-target">into(Target target)</h5>
 <p>创建<code class="highlighter-rouge">TargetAction</code>，并与传入的<code class="highlighter-rouge">target</code>绑定，而<code class="highlighter-rouge">Target</code>接口包含以下方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 图片加载成功</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 图片加载成功</span>
 <span class="kt">void</span> <span class="nf">onBitmapLoaded</span><span class="p">(</span><span class="n">Bitmap</span> <span class="n">bitmap</span><span class="o">,</span> <span class="n">LoadedFrom</span> <span class="n">from</span><span class="o">);</span>
 <span class="c1">// 图片加载失败</span>
 <span class="kt">void</span> <span class="nf">onBitmapFailed</span><span class="p">(</span><span class="n">Drawable</span> <span class="n">errorDrawable</span><span class="o">);</span>
@@ -520,7 +520,7 @@
 <h5 id="intoremoteviews-remoteviews-int-viewid-int-notificationid-notification-notification">into(RemoteViews remoteViews, int viewId, int notificationId, Notification notification)</h5>
 <p>创建<code class="highlighter-rouge">NotificationAction</code>，并根据传入的<code class="highlighter-rouge">remoteViews</code>及<code class="highlighter-rouge">viewId</code>创建<code class="highlighter-rouge">RemoteViewsTarget</code>，用于将加载好的图片设定给指定的<code class="highlighter-rouge">View</code>。而<code class="highlighter-rouge">notificationId</code>及<code class="highlighter-rouge">notification</code>用于在设定了图片之后进行刷新：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">NotificationManager</span> <span class="n">manager</span> <span class="o">=</span> <span class="n">getService</span><span class="o">(</span><span class="n">picasso</span><span class="o">.</span><span class="na">context</span><span class="o">,</span> <span class="n">NOTIFICATION_SERVICE</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">NotificationManager</span> <span class="n">manager</span> <span class="o">=</span> <span class="n">getService</span><span class="o">(</span><span class="n">picasso</span><span class="o">.</span><span class="na">context</span><span class="o">,</span> <span class="n">NOTIFICATION_SERVICE</span><span class="o">);</span>
 <span class="n">manager</span><span class="o">.</span><span class="na">notify</span><span class="o">(</span><span class="n">notificationId</span><span class="o">,</span> <span class="n">notification</span><span class="o">);</span>
 </code></pre>
 </div>
@@ -529,7 +529,7 @@
 <h5 id="intoremoteviews-remoteviews-int-viewid-int-appwidgetids">into(RemoteViews remoteViews, int viewId, int[] appWidgetIds)</h5>
 <p>创建<code class="highlighter-rouge">AppWidgetAction</code>，类似于<code class="highlighter-rouge">NotificationAction</code>，通过调用：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">AppWidgetManager</span> <span class="n">manager</span> <span class="o">=</span> <span class="n">AppWidgetManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="n">picasso</span><span class="o">.</span><span class="na">context</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">AppWidgetManager</span> <span class="n">manager</span> <span class="o">=</span> <span class="n">AppWidgetManager</span><span class="o">.</span><span class="na">getInstance</span><span class="o">(</span><span class="n">picasso</span><span class="o">.</span><span class="na">context</span><span class="o">);</span>
 <span class="n">manager</span><span class="o">.</span><span class="na">updateAppWidget</span><span class="o">(</span><span class="n">appWidgetIds</span><span class="o">,</span> <span class="n">remoteViews</span><span class="o">);</span>
 </code></pre>
 </div>
@@ -544,7 +544,7 @@
 <h4 id="dispatcher-1">3. Dispatcher提交任务</h4>
 <p>通过调用<code class="highlighter-rouge">Picasso.submit</code>或<code class="highlighter-rouge">Picasso.enqueueAndSubmit</code>可以提交上文中创建的<code class="highlighter-rouge">Action</code>，后者相对于前者的区别在于会以<code class="highlighter-rouge">Action</code>.<code class="highlighter-rouge">target</code>为<code class="highlighter-rouge">key</code>记录该<code class="highlighter-rouge">Action</code>，两者最终均调用<code class="highlighter-rouge">dispatcher.dispatchSubmit</code>，由<code class="highlighter-rouge">Dispatcher</code>来实现任务的统一提交，实际的处理逻辑则在<code class="highlighter-rouge">performSubmit</code>方法中：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">performSubmit</span><span class="p">(</span><span class="n">Action</span> <span class="n">action</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">dismissFailed</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">performSubmit</span><span class="p">(</span><span class="n">Action</span> <span class="n">action</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">dismissFailed</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">pausedTags</span><span class="o">.</span><span class="na">contains</span><span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">getTag</span><span class="o">()))</span> <span class="o">{</span>
       <span class="n">pausedActions</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">action</span><span class="o">.</span><span class="na">getTarget</span><span class="o">(),</span> <span class="n">action</span><span class="o">);</span>
       <span class="k">return</span><span class="o">;</span>
@@ -582,7 +582,7 @@
 <h4 id="bitmaphunter">4. BitmapHunter执行任务</h4>
 <p>提交到<code class="highlighter-rouge">PicassoExecutorService</code>的<code class="highlighter-rouge">BitmapHunter</code>被执行的时候会调用其<code class="highlighter-rouge">run</code>方法（非实际源码）：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">try</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="k">try</span> <span class="o">{</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">hunt</span><span class="o">();</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">result</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
       <span class="n">dispatcher</span><span class="o">.</span><span class="na">dispatchFailed</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
@@ -598,7 +598,7 @@
 </div>
 <p>调用<code class="highlighter-rouge">BitmapHunter.hunt</code>获取<code class="highlighter-rouge">Request</code>中<code class="highlighter-rouge">Uri</code>对应的资源图片，根据返回结果决定产生成功或失败事件，若抛出异常则根据异常类型决定是产生重试还是失败事件，具体细节可查看源码，这边主要分析<code class="highlighter-rouge">hunt</code>方法中的处理逻辑：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">Bitmap</span> <span class="nf">hunt</span><span class="p">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">Bitmap</span> <span class="nf">hunt</span><span class="p">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
     <span class="n">Bitmap</span> <span class="n">bitmap</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
 
     <span class="k">if</span> <span class="o">(</span><span class="n">shouldReadFromMemoryCache</span><span class="o">(</span><span class="n">memoryPolicy</span><span class="o">))</span> <span class="o">{</span>
@@ -658,7 +658,7 @@
 <h4 id="dispatchercompletefailretry">5. Dispatcher处理图片加载事件（complete、fail、retry）</h4>
 
 <h5 id="performcompletebitmaphunter-hunter">performComplete(BitmapHunter hunter)</h5>
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 如果memoryPolicy没有设定为NO_STORE则将该图片缓存到内存中</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 如果memoryPolicy没有设定为NO_STORE则将该图片缓存到内存中</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">shouldWriteToMemoryCache</span><span class="o">(</span><span class="n">hunter</span><span class="o">.</span><span class="na">getMemoryPolicy</span><span class="o">()))</span> <span class="o">{</span>
       <span class="n">cache</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="n">hunter</span><span class="o">.</span><span class="na">getKey</span><span class="o">(),</span> <span class="n">hunter</span><span class="o">.</span><span class="na">getResult</span><span class="o">());</span>
     <span class="o">}</span>
@@ -670,7 +670,7 @@
 <p>其中<code class="highlighter-rouge">batch(hunter)</code>是将<code class="highlighter-rouge">BitmapHunter</code>作为参数生成事件（<code class="highlighter-rouge">HUNTER_BATCH_COMPLETE</code>）发送到主线程进行处理，这里有个小技巧就是这个事件是个延时事件，因此在图片加载任务比较密集的情况下可以减少事件的发送量。</p>
 
 <h5 id="performerrorbitmaphunter-hunter-boolean-willreplay">performError(BitmapHunter hunter, boolean willReplay)</h5>
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="n">hunterMap</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">hunter</span><span class="o">.</span><span class="na">getKey</span><span class="o">());</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="n">hunterMap</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">hunter</span><span class="o">.</span><span class="na">getKey</span><span class="o">());</span>
     <span class="n">batch</span><span class="o">(</span><span class="n">hunter</span><span class="o">);</span>
 </code></pre>
 </div>
@@ -685,7 +685,7 @@
 </ol>
 
 <h4 id="hunterbatchcomplete">6. 主线程处理HUNTER_BATCH_COMPLETE事件</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">List</span><span class="o">&lt;</span><span class="n">BitmapHunter</span><span class="o">&gt;</span> <span class="n">batch</span> <span class="o">=</span> <span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">BitmapHunter</span><span class="o">&gt;)</span> <span class="n">msg</span><span class="o">.</span><span class="na">obj</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">List</span><span class="o">&lt;</span><span class="n">BitmapHunter</span><span class="o">&gt;</span> <span class="n">batch</span> <span class="o">=</span> <span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">BitmapHunter</span><span class="o">&gt;)</span> <span class="n">msg</span><span class="o">.</span><span class="na">obj</span><span class="o">;</span>
 <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">batch</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
     <span class="n">BitmapHunter</span> <span class="n">hunter</span> <span class="o">=</span> <span class="n">batch</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
     <span class="n">hunter</span><span class="o">.</span><span class="na">picasso</span><span class="o">.</span><span class="na">complete</span><span class="o">(</span><span class="n">hunter</span><span class="o">);</span>
@@ -697,7 +697,7 @@
 <h4 id="picassocleanthread">7. Picasso中cleanThread的工作</h4>
 <p><code class="highlighter-rouge">cleanThread</code>会循环检测是否有<code class="highlighter-rouge">Action</code>对应的<code class="highlighter-rouge">target</code>被回收，若有则发送<code class="highlighter-rouge">REQUEST_GCED</code>事件回收该<code class="highlighter-rouge">Action</code>，该事件调用<code class="highlighter-rouge">Picasso.cancelExistingRequest(action.getTarget())</code>进行处理：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 仅在主线程中运行该函数</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 仅在主线程中运行该函数</span>
     <span class="n">checkMain</span><span class="o">();</span>
     <span class="n">Action</span> <span class="n">action</span> <span class="o">=</span> <span class="n">targetToAction</span><span class="o">.</span><span class="na">remove</span><span class="o">(</span><span class="n">target</span><span class="o">);</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">action</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
@@ -718,7 +718,7 @@
 </div>
 <p>其中<code class="highlighter-rouge">Action</code>的取消工作由<code class="highlighter-rouge">Dispatcher</code>进行统一处理：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">performCancel</span><span class="p">(</span><span class="n">Action</span> <span class="n">action</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kt">void</span> <span class="nf">performCancel</span><span class="p">(</span><span class="n">Action</span> <span class="n">action</span><span class="o">)</span> <span class="o">{</span>
     <span class="n">String</span> <span class="n">key</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="na">getKey</span><span class="o">();</span>
     <span class="n">BitmapHunter</span> <span class="n">hunter</span> <span class="o">=</span> <span class="n">hunterMap</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">key</span><span class="o">);</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">hunter</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
@@ -763,7 +763,7 @@
 <h3 id="section-5">四、其他想说的</h3>
 
 <h4 id="utilsflushstacklocalleakslooper">1. Utils.flushStackLocalLeaks(Looper)</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code>  <span class="cm">/**
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>  <span class="cm">/**
    * Prior to Android 5, HandlerThread always keeps a stack local reference to the last message
    * that was sent to it. This method makes sure that stack local reference never stays there
    * for too long by sending new messages to it every second.
@@ -814,6 +814,8 @@
     <h1>最新文章</h1>
     <ul>
         
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
           <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
         
           <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
@@ -821,8 +823,6 @@
           <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
         
           <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
-        
-          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
         
     </ul>
 </div>

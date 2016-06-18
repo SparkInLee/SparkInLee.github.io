@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>蒋黎的博客</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <link href="/images/favicon.png" rel="shortcut icon">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="蒋黎的博客" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <!-- <li><a href="/about.html">关于</a></li> -->
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-06-touch-e4-ba-8b-e4-bb-b6-e5-88-86-e5-8f-91-e5-a4-84-e7-90-86-e6-9c-ba-e5-88-b6-e8-af-a6-e8-a7-a3">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本文主要分析Android中Touch事件的分发与处理。
+<!-- excerpt split --></p>
+
+<hr />
+
+<p><strong>文章原创，允许转载，转载请注明出处。</strong></p>
+
+<hr />
+
+<h3 id="motionevent">一、MotionEvent</h3>
+<p>MotionEvent作为Touch事件的载体，采用时间片来管理Touch事件所有相关行为的数据，本文这样理解时间片这个概念：</p>
+
+<ul>
+  <li>纵向上，MotionEvent（一般为Move事件）会在一段时间内多次采样合成为一个事件进行处理，由于每一次采样均对应一份采样得到的Touch数据，因此该事件中就包含了多份Touch数据，并将最近采样的数据作为当前数据，其他数据存储为历史数据，采取这种批量的处理方式主要出于效率的考虑。</li>
+  <li>横向上，一个时间片对应特定时间点（可通过getEventTime获取）的采样数据数据，该采样点中可能包含多个触摸点，MotionEvent中采用Pointer才标记每一个采样点，每一个Pointer的激活周期为从Down事件至Up或Cancel事件，在激活周期内会分配一个在不同MotionEvent中保持唯一的PointerId，但是在不同MotionEvent种Pointer的排序会不断调整，因此Pointer在不同MotionEvent中对应的PointerIndex也会不断变化，根据PointerId可以找到该Pointer在某一MotionEvent种的PointerIndex，根据PointerIndex则可以获取该Pointer在MotionEvent中相关Touch数据：
+    <ul>
+      <li>rawX：相对于屏幕坐标系的原始X坐标，通过getRawX获取</li>
+      <li>rawY：相对于屏幕坐标系的原始Y坐标，通过getRawY获取</li>
+      <li>x：相对于事件处理主体（Window、View）坐标系的X坐标，通过getX(int index)获取</li>
+      <li>y：相对于事件处理主体（Window、View）坐标系的Y坐标，通过getY(int index)获取</li>
+      <li>size：按压区域的大小，通过getSize(int index)获取</li>
+      <li>pressure：按压的压力，通过getPressure(int index)获取</li>
+      <li>orientation：按压时屏幕的方向，通过getOrientation(int index)获取</li>
+      <li>touchMajor：按压椭圆区域长边长，通过getTouchMajor(int index)获取</li>
+      <li>touchMinor：按压椭圆区域短边长，通过getTouchMinor(int index)获取</li>
+    </ul>
+  </li>
+</ul>
+
+<p>通常MotionEvent会将触发当前事件的Pointer作为主要Pointer，其PointerIndex为0，而MotionEvent通过提供getX()这类不带index参数的接口以更方便的操作主要Pointer的数据。 <br />
+了解了MotionEvent的组成结构之后，接下来就可以分析MotionEvent包含的事件类型了，MotionEvent通过getAction接口来获取事件Action，而Action中低8位地址存储的是事件类型（对于触摸事件来说，主要包括Down、Move、Up、Cancel、PointerDown、PointerUp），高8位地址存储的是PointerId（当事件类型为PointerDown、PointerUp时）。通常来说事件会以Down开始，以Up或Cancel结束，各事件所承担的角色以及各自的特点在分析事件分发与处理的过程时再详细说明。 <br />
+另外，MotionEvent中的Flag需要说明一下：</p>
+
+<ul>
+  <li>FLAG_WINDOW_IS_OBSCURED：是否被透明View遮挡</li>
+  <li>FLAG_TAINTED：事件是否出现不一致</li>
+  <li>FLAG_TARGET_ACCESSIBILITY_FOCUS：事件是否需要先触发辅助功能View</li>
+</ul>
+
+<h3 id="viewgroupdispatchevent">二、ViewGroup.dispatchEvent</h3>
+
+<h4 id="section">1. 事件分发逻辑</h4>
+<p>本文仅分析Touch事件在Framework中Java层的传递，因此从事件传递到Activity开始分析。当Touch事件传递给Activity时，会调用Activity.dispatchTouchEvent(MotionEvent)，Activity会将事件传递给其Window进行处理，实际会调用PhoneWindow.superDispatchTouchEvent(MotionEvent)，PhoneWindow会将该事件传递给Android中View层级中的顶层View（即DecorView）进行处理：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">dispatchTouchEvent</span><span class="p">(</span><span class="n">MotionEvent</span> <span class="n">ev</span><span class="o">)</span> <span class="o">{</span>
+    <span class="kd">final</span> <span class="n">Callback</span> <span class="n">cb</span> <span class="o">=</span> <span class="n">getCallback</span><span class="o">();</span>
+    <span class="k">return</span> <span class="n">cb</span> <span class="o">!=</span> <span class="kc">null</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">isDestroyed</span><span class="o">()</span> <span class="o">&amp;&amp;</span> <span class="n">mFeatureId</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">?</span> <span class="n">cb</span><span class="o">.</span><span class="na">dispatchTouchEvent</span><span class="o">(</span><span class="n">ev</span><span class="o">)</span>
+            <span class="o">:</span> <span class="kd">super</span><span class="o">.</span><span class="na">dispatchTouchEvent</span><span class="o">(</span><span class="n">ev</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>在Window未设置Callback的情况下，会调用父类的dispatchTouchEvent，DecorView继承自FrameLayout，然后FrameLayout并未实现dispatchEvent，因此最终调用ViewGroup.dispatchTouchEvent，也就是Touch事件分发的核心逻辑所在，前文中提到MotionEvent中事件类型主要包括Down、Move、Up、Cancel、PointerDown、PointerUp，而dispatchTouchEvent根据事件的不同类型会做不同处理，因此这里分别进行分析：</p>
+
+<p><strong>Down事件处理</strong></p>
+
+<p>非异常情况下，Touch事件的事件周期总是以Down事件开始的，因此Down事件在整个事件分发逻辑中起关键作用，将决定了后续Move、Up及Cancel事件的处理主体，先看一张Down事件分发的流程图：
+<a href="/images/vg_touch_down.png" style="display:block;text-align:center;">
+  <img src="/images/vg_touch_down.png" style="max-width:100%;max-height:100%;" />
+</a>
+从流程图中可以看到，Down事件的分发逻辑主要目的在于寻找到能处理该Touch事件的View控件（该View为以当前ViewGroup为Root节点的View层级中的View，利用寻找到的View创建事件处理Target），整个处理逻辑主要包含以下几步：</p>
+
+<ul>
+  <li>清空异常及已有状态
+    <ul>
+      <li>给所有之前选择出的Target发送Cancel事件，确保之前Target能收到完整的事件周期；</li>
+      <li>清除已有Target，复位所有标志位（如PFLAG_CANCEL_NEXT_UP_EVENT、FLAG_DISALLOW_INTERCEPT等）</li>
+    </ul>
+  </li>
+  <li>调用onInterceptTouchEvent以确定当前ViewGroup是否拦截该Down事件
+    <ul>
+      <li>若拦截，此事件不会向下传递给子View，而调用super.dispatchEvent判断该ViewGroup本身是否需要消费事件</li>
+      <li>若不拦截，则会遍历所有子View寻找是否有子View需要消费该事件
+        <ul>
+          <li>若有子View需要消费该事件，则设定该事件的处理Target为该子View</li>
+          <li>若无子View需要消费该事件，则调用super.dispatchEvent判断该ViewGroup本身是否需要处理该事件</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>若事件处理Target不为空或该ViewGroup消费该事件，则返回true；否则返回false。返回值将决定该ViewGroup的上级ViewGroup是否需要继续询问其他子View是否需要消费该事件；对于处于顶层的DecorView来说，其返回值会决定包含该DecorView的Activity是否需要调用Activity.onTouchEvent进行处理。</li>
+</ul>
+
+<p><strong>Move、Up、Cancel事件处理</strong></p>
+
+<p>完成Down事件的分发逻辑后，就确定了该Down事件后续Move、Up及Cancel事件的处理主体（注意：这里并没有确定PointerDown事件的处理主体，关于PointerDown事件的分发逻辑稍后分析），先通过一张流程图来感受下Move、Up、Cancel事件的分发逻辑：
+<a href="/images/vg_touch_move-up-cancel.png" style="display:block;text-align:center;">
+  <img src="/images/vg_touch_move-up-cancel.png" style="max-width:100%;max-height:100%;" />
+</a>
+从流程图可以看出，对于Move、Up、Cancel事件的分发步骤如下：</p>
+
+<ul>
+  <li>判断在Down事件的处理中是否找到可处理该事件的Target：
+    <ul>
+      <li>存在Target，则调用onInterceptTouchEvent以确定当前ViewGroup是否拦截该事件：
+        <ul>
+          <li>拦截，直接调用super.dispatchEvent判断该ViewGroup本身是否需要消费事件</li>
+          <li>不拦截，传递该事件至所有已有Target</li>
+        </ul>
+      </li>
+      <li>不存在Target，直接调用super.dispatchEvent判断该ViewGroup本身是否需要消费事件</li>
+    </ul>
+  </li>
+  <li>若事件为Up或Cancel，表明一个完整事件周期结束，则清除已有Target，复位被置位的标志位（如PFLAG_CANCEL_NEXT_UP_EVENT、FLAG_DISALLOW_INTERCEPT等）</li>
+</ul>
+
+<p><strong>PointerDown事件处理</strong></p>
+
+<p>PointerDown事件是在支持多Pointer(调用setMotionEventSplittingEnabled将FLAG_SPLIT_MOTION_EVENTS置位)的环境下，当有新的Pointer按下时产生的，该事件处理的特殊性在于会重新遍历View层级，寻找可以处理新Pointer事件的Target，具体流程参考Down事件的分发逻辑；遍历结束若仍没有找到处理该事件的Target，则会将新Pointer的处理权设置给已有Target中最早被添加的Target。完成Target的寻找之后，会将该事件通过dispatchTransformedTouchEvent传递至所有已有Target进行处理，可以通过下面流程图，对PointerDown事件的处理有一个更全局的认识：
+<a href="/images/vg_touch_pointer-down.png" style="display:block;text-align:center;">
+  <img src="/images/vg_touch_pointer-down.png" style="max-width:100%;max-height:100%;" />
+</a></p>
+
+<p><strong>PointerUp事件处理</strong></p>
+
+<p>相对于Up事件来说，对于PointerUp事件的处理区别在于当传递至所有已有Target结束之后并不能标记以Down事件起始的整个事件周期结束，仅能标记其关联Pointer（以PointerDown事件起始）的事件周期结束，因此不会清除所有状态，而仅会从已有Target中移除掉与该Pointer相关的部分。</p>
+
+<h4 id="section-1">2. 关键函数分析</h4>
+<p><strong>onInterceptTouchEvent</strong></p>
+
+<p>在ViewGroup进行事件分发的过程中，会调用该函数来确定是否需要拦截事件，当该函数返回true时该事件将会被拦截，即不会进行正常的View层级传递，而是直接由该ViewGroup来处理，而拦截后的操作需要根据拦截事件的类型不同而不同：</p>
+
+<ul>
+  <li>Down事件：该事件及后续所有事件均不会传递至其子View，而该事件会由该ViewGroup尝试消费：
+    <ul>
+      <li>若消费，则后续所有事件均有该ViewGroup消费</li>
+      <li>若不消费，则后续事件均不会传递至以该ViewGroup为root的View层级</li>
+    </ul>
+  </li>
+  <li>PointerDown事件：
+    <ul>
+      <li>若存在处理了Down事件的Target，则传递Cancel事件给所有已有Target；</li>
+      <li>该事件不会传递至子View，而直接由ViewGroup接手处理；</li>
+    </ul>
+  </li>
+  <li>Move、Up、PointerUp、Cancel事件：若存在处理了Down事件的Target，则会先传递Cancel事件给所有已有Target，而该事件及后续事件均由该ViewGroup接手消费（不管是否实际消费）</li>
+</ul>
+
+<p><strong>dispatchTransformedTouchEvent(MotionEvent event, boolean cancel, View child, int desiredPointerIdBits)</strong></p>
+
+<p>在将事件传递给Target进行处理之前会调用该函数对MotionEvent进行处理：</p>
+
+<ul>
+  <li>cancel为true，会将事件Action转换成ACTION_CACEL
+    <ul>
+      <li>child为null：调用ViewGroup.super.dispatchTouchEvent</li>
+      <li>child不为null：调用child.dispatchTouchEvent</li>
+    </ul>
+  </li>
+  <li>cancel为false
+    <ul>
+      <li>Down、Move、Up事件
+        <ul>
+          <li>child为null：调用ViewGroup.super.dispatchTouchEvent</li>
+          <li>child不为null：转换事件的X、Y坐标至child的坐标系，调用child.dispatchTouchEvent</li>
+        </ul>
+      </li>
+      <li>PointerDown、PointerUp事件：调用MotionEvent.split分离并创建出该Pointer的事件
+        <ul>
+          <li>child为null：调用ViewGroup.super.dispatchTouchEvent</li>
+          <li>child不为null：转换事件的X、Y坐标至child的坐标系，调用child.dispatchTouchEvent</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p><strong>MotionEvent.split(int idBits)</strong></p>
+
+<ul>
+  <li>参数idBits：需要分离的pointerId，MotionEvent的Pointer最大为32，因此用整数可唯一标记任一事件中的任一Pointer的Id；
+    <ul>
+      <li>分割步骤：
+        <ul>
+          <li>遍历当前事件中所有Pointer，找出与idBits中id相对应的Pointer</li>
+          <li>计算出新pointerCount</li>
+          <li>计算出新pointerIndex：对于Action_Pointer_Down或Action_Pointer_Up事件，事件中需存在pointerIndex；</li>
+          <li>转化Action：
+            <ul>
+              <li>Action_Pointer_Down或Action_Pointer_Up事件类型：
+                <ul>
+                  <li>无新pointerIndex，表明该事件中按下的pointer并不在idBits的兴趣范围，因此转换为ACTION_MOVE事件</li>
+                  <li>新pointerCount等于1，表明新事件中仅有一个Pointer，因此Action中事件类型由转换Action_Pointer_Down为ACTION_DOWN或由Action_Pointer_Up转换为ACTION_UP</li>
+                  <li>其他情况表明新事件中有多个Pointer，因此不转换Action中事件类型，但由原事件类型和新pointerIndex合成为新的Action</li>
+                </ul>
+              </li>
+              <li>其他事件无需转换</li>
+            </ul>
+          </li>
+          <li>创建新事件</li>
+          <li>添加Batch中的History Event</li>
+          <li>返回分割得到的新事件</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="viewdispatchevent">三、View.dispatchEvent</h3>
+<p>判断一个View控件是否消费一个事件，是由View.dispatchEvent的返回值来决定的，而View.dispatchEvent用于寻找事件的最终消费者，话不多说，还是通过一张流程图来个直观感受：
+<a href="/images/view_touch.png" style="display:block;text-align:center;">
+  <img src="/images/view_touch.png" style="max-width:100%;max-height:100%;" />
+</a>
+从流程图中可以看出，View会根据ouch事件对Scroll状态进行调整，并寻找该事件的最终处理器：</p>
+
+<ul>
+  <li>首先传递给mTouchListener.onTouch
+    <ul>
+      <li>返回true，消费掉该事件</li>
+      <li>返回false，未消费该事件，则继续传递给View.onTouchEvent
+        <ul>
+          <li>返回true，消费掉该事件</li>
+          <li>返回false，未消费该事件</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>View.dispatchEvent将向其直接ViewGroup返回是否消费掉该事件，返回值将决定上级ViewGroup是否需要继续询问其他子View是否需要消费该事件。这就是View中分发事件的逻辑，真是简单粗暴！</p>
+
+<h3 id="viewontouchevent">二、View.onTouchEvent</h3>
+<p>从View.dispatchEvent的分析中可以发现当未对View设置mTouchListener或mTouchListener未消费掉该事件时，Touch事件最终将由View.onTouchEvent来决定是否消费，自定义View可以重写该方法实现自身的逻辑，此处仅分析View中的通用处理逻辑：</p>
+
+<ul>
+  <li>View处于Disabled状态，若可点击（Clickable、LongClickable、ContextClickable某一项为true）则消费掉改事件，但不执行任何具体逻辑；</li>
+  <li>View处于enable状态下
+    <ul>
+      <li>若存在touchDelegate（可用于调整View的可点击区域），则将事件转发给touchDelegate</li>
+      <li>不存在touchDelegate：
+        <ul>
+          <li>可点击：
+            <ul>
+              <li>Action_Down：
+                <ul>
+                  <li>若在Scroll容器内，则设置为PrePressed状态，并延迟判定该事件是否点击事件；</li>
+                  <li>若不在Scroll容器，设置为Pressed状态，并延迟判定该事件是否为长按事件；</li>
+                </ul>
+              </li>
+              <li>Action_Move：若移出该View区域，则取消点击及长按判定，并设置为非Pressed状态；</li>
+              <li>Action_Cancel：取消点击长按判定，设置为非Pressed状态，清除其他状态；</li>
+              <li>Action_Up：
+                <ul>
+                  <li>若为PrePressed状态，则设置为Pressed状态</li>
+                  <li>若为Pressed状态：
+                    <ul>
+                      <li>未执行长按逻辑：移除长按判定，执行点击逻辑</li>
+                      <li>已执行长按逻辑：无需执行点击逻辑</li>
+                    </ul>
+                  </li>
+                  <li>设置为非Pressed状态，移除当前时间点之前的点击及长按判定</li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li>不可点击：不消费该事件</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>从上述分析可以很开心地发现熟悉的onClick及onLongClick事件的产生逻辑，若是之前没看过类似的文章，应该会有原来如此的感觉吧，哈哈~~</p>
+
+<hr />
+<p>至此，Touch事件的分发与处理流程算是走通了，个人看完整个源码之后有种豁然开朗的感觉，能很清晰的分析向“为什么事件有时候传到某个View有时候却不传？”、“有时候只传前面几个事件后面却不传了？”等问题，也希望本文的分析能让你更清晰地感知Android中Touch事件的传递流程，如果发现文中有何错误，希望不吝赐教！</p>
+
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+              
+                <a class="btn btn-default" href="/2016/04/Okio%E8%AF%A6%E8%A7%A3" class="previous">上一篇</a>
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
+          <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
+        
+          <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
+        
+          <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
+        
+          <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+  <li><a href="https://github.com/SparkInLee/HotPatch" target="blank">HotPatch</a></li>
+</ul>
+
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-06-touch-e4-ba-8b-e4-bb-b6-e5-88-86-e5-8f-91-e5-a4-84-e7-90-86-e6-9c-ba-e5-88-b6-e8-af-a6-e8-a7-a3';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 蒋黎的博客.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-06-touch-e4-ba-8b-e4-bb-b6-e5-88-86-e5-8f-91-e5-a4-84-e7-90-86-e6-9c-ba-e5-88-b6-e8-af-a6-e8-a7-a3';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+

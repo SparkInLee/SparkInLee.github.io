@@ -61,7 +61,7 @@
 <h3 id="section">1. 引言</h3>
 <p>在Assert中存在这样一个接口：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="nd">@Test</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="nd">@Test</span>
     <span class="kd">public</span> <span class="kt">void</span> <span class="n">testAssertThat</span><span class="o">(){</span>
         <span class="n">Assert</span><span class="o">.</span><span class="na">assertThat</span><span class="o">(</span><span class="s">"test"</span><span class="o">,</span> <span class="n">org</span><span class="o">.</span><span class="na">hamcrest</span><span class="o">.</span><span class="na">CoreMatchers</span><span class="o">.</span><span class="na">equalTo</span><span class="o">(</span><span class="s">"test"</span><span class="o">));</span>
     <span class="o">}</span>
@@ -69,7 +69,7 @@
 </div>
 <p>实际调用了：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kt">void</span> <span class="n">assertThat</span><span class="o">(</span><span class="n">String</span> <span class="n">reason</span><span class="o">,</span> <span class="n">T</span> <span class="n">actual</span><span class="o">,</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kt">void</span> <span class="n">assertThat</span><span class="o">(</span><span class="n">String</span> <span class="n">reason</span><span class="o">,</span> <span class="n">T</span> <span class="n">actual</span><span class="o">,</span>
             <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">)</span> <span class="o">{</span>
         <span class="n">MatcherAssert</span><span class="o">.</span><span class="na">assertThat</span><span class="o">(</span><span class="n">reason</span><span class="o">,</span> <span class="n">actual</span><span class="o">,</span> <span class="n">matcher</span><span class="o">);</span>
     <span class="o">}</span>
@@ -77,7 +77,7 @@
 </div>
 <p>在MatcherAssert中的实现为：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kt">void</span> <span class="n">assertThat</span><span class="o">(</span><span class="n">String</span> <span class="n">reason</span><span class="o">,</span> <span class="n">T</span> <span class="n">actual</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kt">void</span> <span class="n">assertThat</span><span class="o">(</span><span class="n">String</span> <span class="n">reason</span><span class="o">,</span> <span class="n">T</span> <span class="n">actual</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">if</span> <span class="o">(!</span><span class="n">matcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">actual</span><span class="o">))</span> <span class="o">{</span>
             <span class="n">Description</span> <span class="n">description</span> <span class="o">=</span> <span class="k">new</span> <span class="n">StringDescription</span><span class="o">();</span>
             <span class="n">description</span><span class="o">.</span><span class="na">appendText</span><span class="o">(</span><span class="n">reason</span><span class="o">)</span>
@@ -108,19 +108,19 @@
 <h5 id="diagnosingmatcher">2.2.1 说说DiagnosingMatcher</h5>
 <p>诊断类Matcher，这类Matcher主要用于确定匹配结果，其子类需要重写以下方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">);</span>
 </code></pre>
 </div>
 <p>而说说<code class="highlighter-rouge">DiagnosingMatcher</code>通过截断<code class="highlighter-rouge">matches</code>方法来沉默掉所有匹配时输出的信息：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">matches</span><span class="o">(</span><span class="n">item</span><span class="o">,</span> <span class="n">Description</span><span class="o">.</span><span class="na">NONE</span><span class="o">);</span>
     <span class="o">}</span>
 </code></pre>
 </div>
 <p>而当需要输出匹配失败信息的时候，调用<code class="highlighter-rouge">describeMismatch</code>方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">describeMismatch</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">describeMismatch</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
         <span class="n">matches</span><span class="o">(</span><span class="n">item</span><span class="o">,</span> <span class="n">mismatchDescription</span><span class="o">);</span>
     <span class="o">}</span>
 </code></pre>
@@ -130,18 +130,18 @@
 <h5 id="typesafematcher">2.2.2 谈谈TypeSafeMatcher</h5>
 <p>这类Matcher主要附带类型检测的特技，快速拒绝空或者非指定类型的被判定对象，其子类必须复写一下方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">T</span> <span class="n">item</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">T</span> <span class="n">item</span><span class="o">);</span>
 </code></pre>
 </div>
 <p>其中T为指定类型，被判定对象必须是该类型或其子类型的实例对象，谈谈TypeSafeMatcher通过反射该方法第一个参数的类型来确定需要判定的类型：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">ReflectiveTypeFinder</span> <span class="n">TYPE_FINDER</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ReflectiveTypeFinder</span><span class="o">(</span><span class="s">"matchesSafely"</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">ReflectiveTypeFinder</span> <span class="n">TYPE_FINDER</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ReflectiveTypeFinder</span><span class="o">(</span><span class="s">"matchesSafely"</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span>
     <span class="k">this</span><span class="o">.</span><span class="na">expectedType</span> <span class="o">=</span> <span class="n">typeFinder</span><span class="o">.</span><span class="na">findExpectedType</span><span class="o">(</span><span class="n">getClass</span><span class="o">());</span> 
 </code></pre>
 </div>
 <p>其中<code class="highlighter-rouge">ReflectiveTypeFinder</code>是一个反射指定方法中相应位置参数的类型的一个实用类，其构造函数中第一个参数为需要反射的方法，第二个参数为指定方法的参数个数，第三个参数为需要反射参数类型的位置。反射得到指定类型之后，便通过截断<code class="highlighter-rouge">matches</code>方法来实现类型判定：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">item</span> <span class="o">!=</span> <span class="kc">null</span>
                 <span class="o">&amp;&amp;</span> <span class="n">expectedType</span><span class="o">.</span><span class="na">isInstance</span><span class="o">(</span><span class="n">item</span><span class="o">)</span>
                 <span class="o">&amp;&amp;</span> <span class="n">matchesSafely</span><span class="o">((</span><span class="n">T</span><span class="o">)</span> <span class="n">item</span><span class="o">);</span>
@@ -150,7 +150,7 @@
 </div>
 <p>如果类型判定通过才调用实际的判定方法<code class="highlighter-rouge">matchesSafely</code>，为了确保类型判定的完全覆盖，<code class="highlighter-rouge">TypeSafeMatcher</code>还截断了<code class="highlighter-rouge">describeMismatch</code>方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">final</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">describeMismatch</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">description</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">final</span> <span class="kd">public</span> <span class="kt">void</span> <span class="nf">describeMismatch</span><span class="p">(</span><span class="n">Object</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">description</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">if</span> <span class="o">(</span><span class="n">item</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
             <span class="kd">super</span><span class="o">.</span><span class="na">describeMismatch</span><span class="o">(</span><span class="kc">null</span><span class="o">,</span> <span class="n">description</span><span class="o">);</span>
         <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(!</span> <span class="n">expectedType</span><span class="o">.</span><span class="na">isInstance</span><span class="o">(</span><span class="n">item</span><span class="o">))</span> <span class="o">{</span>
@@ -167,7 +167,7 @@
 </div>
 <p>其子类通过覆写以下方法来实现自身的不匹配描述：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">describeMismatchSafely</span><span class="p">(</span><span class="n">T</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">describeMismatchSafely</span><span class="p">(</span><span class="n">T</span> <span class="n">item</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
         <span class="kd">super</span><span class="o">.</span><span class="na">describeMismatch</span><span class="o">(</span><span class="n">item</span><span class="o">,</span> <span class="n">mismatchDescription</span><span class="o">);</span>
     <span class="o">}</span>
 </code></pre>
@@ -177,7 +177,7 @@
 <p><code class="highlighter-rouge">TypeSafeDiagnosingMatcher</code>类是对<code class="highlighter-rouge">DiagnosingMatcher</code>以及<code class="highlighter-rouge">TypeSafeMatcher</code>的集成，什么意思？意思是<code class="highlighter-rouge">TypeSafeDiagnosingMatcher</code>是一个类型安全的诊断器，如果有认真看上面两种类型Matcher的实现方式，我们很容易推断出这类Matcher的是实现方式，那就是在<code class="highlighter-rouge">TypeSafeMatcher</code>的基础上改写<code class="highlighter-rouge">matcheSafely</code>方法
 为带一个<code class="highlighter-rouge">Description</code>参数的方法，然后在matches方法中向子类传递一个<code class="highlighter-rouge">Description.NONE</code>，这样就可以仅做判定而不输出所有匹配信息；相应的当匹配失败需要匹配信息的时候需要传递一个非空非NONE的<code class="highlighter-rouge">Description</code>对象将信息带出。根据这个猜测我们去查看源码，发现的确是这么回事：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 获取指定类型</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 获取指定类型</span>
     <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="n">ReflectiveTypeFinder</span> <span class="n">TYPE_FINDER</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ReflectiveTypeFinder</span><span class="o">(</span><span class="s">"matchesSafely"</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">0</span><span class="o">);</span> 
     <span class="k">this</span><span class="o">.</span><span class="na">expectedType</span> <span class="o">=</span> <span class="n">typeFinder</span><span class="o">.</span><span class="na">findExpectedType</span><span class="o">(</span><span class="n">getClass</span><span class="o">());</span> 
 
@@ -197,17 +197,17 @@
 <h5 id="featurematcher">2.2.4 FeatureMatcher是个什么鬼</h5>
 <p>首先我们来看看<code class="highlighter-rouge">FeatureMatcher</code>的继承关系：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">FeatureMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">,</span> <span class="n">U</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">TypeSafeDiagnosingMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">FeatureMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">,</span> <span class="n">U</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">TypeSafeDiagnosingMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
 </code></pre>
 </div>
 <p>小样，来自于<code class="highlighter-rouge">TypeSafeDiagnosingMatcher</code>，那么肯定是个类型安全的诊断器，但是竟然带了两个泛型类型，T类型比较好解释，那么U类型是用来干嘛的，隐隐觉得已经触碰到类Matcher的灵魂了，宝贝儿不要挣扎了，让我看到你的内心：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="n">U</span> <span class="nf">featureValueOf</span><span class="p">(</span><span class="n">T</span> <span class="n">actual</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="n">U</span> <span class="nf">featureValueOf</span><span class="p">(</span><span class="n">T</span> <span class="n">actual</span><span class="o">);</span>
 </code></pre>
 </div>
 <p>要求所有子类复写<code class="highlighter-rouge">featureValueOf</code>方法，根据T类型返回U类型，有点函数编程的意思，哈！查看源码发现这个返回值实际是在match的时候使用的：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">T</span> <span class="n">actual</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatch</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">T</span> <span class="n">actual</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatch</span><span class="o">)</span> <span class="o">{</span>
         <span class="kd">final</span> <span class="n">U</span> <span class="n">featureValue</span> <span class="o">=</span> <span class="n">featureValueOf</span><span class="o">(</span><span class="n">actual</span><span class="o">);</span>
         <span class="k">if</span> <span class="o">(!</span><span class="n">subMatcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">featureValue</span><span class="o">))</span> <span class="o">{</span>
           <span class="n">mismatch</span><span class="o">.</span><span class="na">appendText</span><span class="o">(</span><span class="n">featureName</span><span class="o">).</span><span class="na">appendText</span><span class="o">(</span><span class="s">" "</span><span class="o">);</span>
@@ -223,24 +223,24 @@
 <h5 id="substringmatcher">2.2.5 看看SubstringMatcher</h5>
 <p><code class="highlighter-rouge">SubstringMatcher</code>的继承关系：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">SubstringMatcher</span> <span class="kd">extends</span> <span class="n">TypeSafeMatcher</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">SubstringMatcher</span> <span class="kd">extends</span> <span class="n">TypeSafeMatcher</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span>
 </code></pre>
 </div>
 <p>哦~~是一个类型安全的子串匹配器，它要求子类复写方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">evalSubstringOf</span><span class="p">(</span><span class="n">String</span> <span class="n">string</span><span class="o">);</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kd">abstract</span> <span class="kt">boolean</span> <span class="nf">evalSubstringOf</span><span class="p">(</span><span class="n">String</span> <span class="n">string</span><span class="o">);</span>
 </code></pre>
 </div>
 <p>这个方法判断是否以特定的方式包含指定子串，从<code class="highlighter-rouge">matchesSafely</code>可以看出来：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">String</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">String</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">evalSubstringOf</span><span class="o">(</span><span class="n">ignoringCase</span> <span class="o">?</span> <span class="n">item</span><span class="o">.</span><span class="na">toLowerCase</span><span class="o">()</span> <span class="o">:</span><span class="n">item</span><span class="o">);</span>
     <span class="o">}</span>
 </code></pre>
 </div>
 <p><code class="highlighter-rouge">SubstringMatcher</code>还有一个特殊的字段用于确定是否是大小写无关的判定：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">ignoringCase</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="kt">boolean</span> <span class="n">ignoringCase</span><span class="o">;</span>
     <span class="kd">protected</span> <span class="n">String</span> <span class="n">converted</span><span class="o">(</span><span class="n">String</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">ignoringCase</span> <span class="o">?</span> <span class="n">arg</span><span class="o">.</span><span class="na">toLowerCase</span><span class="o">()</span> <span class="o">:</span> <span class="n">arg</span><span class="o">;</span> 
     <span class="o">}</span>
@@ -250,7 +250,7 @@
 
 <h5 id="matcher-2">2.2.6 最后说说鸡肋的用户自定义Matcher原型</h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 基于BaseMatcher创建自定义Matcher</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 基于BaseMatcher创建自定义Matcher</span>
     <span class="kd">public</span> <span class="kd">abstract</span> <span class="kd">class</span> <span class="nc">CustomMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">BaseMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
 
     <span class="c1">// 基于TypeSafeMatcher创建自定义Matcher</span>
@@ -262,17 +262,17 @@
 <h4 id="matcher-3">2.3 Matcher家族之基础系</h4>
 <p>这一系家族成员的特征是：直接判定出匹配结果。为了更好地说明，我们以<code class="highlighter-rouge">IsEqual&lt;T&gt;</code>为例：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">IsEqual</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">BaseMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">IsEqual</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">BaseMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
 </code></pre>
 </div>
 <p><code class="highlighter-rouge">IsEqual</code>继承自BaseMatcher，其构造函数：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="nf">IsEqual</span><span class="p">(</span><span class="n">T</span> <span class="n">equalArg</span><span class="o">)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="nf">IsEqual</span><span class="p">(</span><span class="n">T</span> <span class="n">equalArg</span><span class="o">)</span>
 </code></pre>
 </div>
 <p>要求必须传递一个判定标准，即被判定的对象必须与这里传入的对象相等方可通过测试，判定方式为：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">actualValue</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">actualValue</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">areEqual</span><span class="o">(</span><span class="n">actualValue</span><span class="o">,</span> <span class="n">expectedValue</span><span class="o">);</span>
     <span class="o">}</span>
 
@@ -291,7 +291,7 @@
 </div>
 <p>这里对基本对象直接调用<code class="highlighter-rouge">equlas</code>方法进行判定，而对于对象数组则需要采用Deep Equal的方式进行判定，这里我们看到<code class="highlighter-rouge">matches</code>方法是可以直接得出判定出结果，而不需要借助于其他Matcher成员，这也是根基系家族成员的基本特征：直接判定出匹配结果。族系成员还包括：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 匹配所有对象，直接返回true</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="c1">// 匹配所有对象，直接返回true</span>
     <span class="kd">public</span> <span class="kd">class</span> <span class="nc">IsAnything</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">BaseMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
 
     <span class="c1">// 判断被判定对象是否包含在设定的集合内</span>
@@ -376,16 +376,16 @@
 <h4 id="matcher-4">2.4 Matcher家族之复合系</h4>
 <p>复合系的Matcher们比较聪明，它们不愿意干那些直接判定的“脏活累活”，而是通过资源整合来利用已有的基础Matcher做一些上层设计，让用户能更好更清晰的设计自己的匹配逻辑。下面就让我们掀开他们的盖头来：</p>
 
-<h5 id="ist">2.4.1 最简单的Is<t></t></h5>
+<h5 id="ist">2.4.1 最简单的Is<T></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matches</span><span class="p">(</span><span class="n">Object</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">matcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">arg</span><span class="o">);</span>
     <span class="o">}</span>
 </code></pre>
 </div>
 <p>就是判定指定matcher是否能匹配传入对象，简单的无言以对，一定是我打开的姿势不对，翻来看去也就只剩下这三个static方法了：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">is</span><span class="o">(</span><span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">is</span><span class="o">(</span><span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="k">new</span> <span class="n">Is</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;(</span><span class="n">matcher</span><span class="o">);</span>
     <span class="o">}</span>
     <span class="kd">public</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">is</span><span class="o">(</span><span class="n">T</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
@@ -399,14 +399,14 @@
 </div>
 <p>简单得想哭，我有一个梦想，那就是世界上所有的代码都这么简单 - -！既然如此简单，就顺带看了<code class="highlighter-rouge">IsNot&lt;T&gt;</code>，然后，然后就没有然后了，大家照着字面理解就行了。</p>
 
-<h5 id="alloft">2.4.2 AllOf<t></t></h5>
+<h5 id="alloft">2.4.2 AllOf<T></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">AllOf</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">DiagnosingMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">AllOf</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">DiagnosingMatcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
 </code></pre>
 </div>
 <p>嗯，是一个诊断器，看起来应该有点干货：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Iterable</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Iterable</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
 	<span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matches</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatch</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">for</span> <span class="o">(</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span> <span class="o">:</span> <span class="n">matchers</span><span class="o">)</span> <span class="o">{</span>
             <span class="k">if</span> <span class="o">(!</span><span class="n">matcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">o</span><span class="o">))</span> <span class="o">{</span>
@@ -421,9 +421,9 @@
 </div>
 <p>oh, NO!师傅你就给我看这个吗？不解释了。我只想说，看官们，到这里我只想告诉大伙，勇敢地去研究源码吧，一个模块一个模块的看，其实并不难。另外既然又说到<code class="highlighter-rouge">DiagnosingMatcher</code>，那么我就吐槽一下这里的一个设计上的小细节，大家有没发现诊断器会在<code class="highlighter-rouge">matches</code>中调用一次诊断，然后在输出不匹配信息的时候又调用了一次诊断，这两次诊断没有缓存结果，所以不得不诊断两次，我认为这是赤裸裸的浪费cpu，难道仅仅因为我是个测试用例就不考虑我的效率了吗？有谁能告诉我这里面有更重要的设计意图？</p>
 
-<h5 id="anyoft">2.4.3 AnyOf<t></t></h5>
+<h5 id="anyoft">2.4.3 AnyOf<T></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">AnyOf</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">ShortcutCombination</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">AnyOf</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="kd">extends</span> <span class="n">ShortcutCombination</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span>
 	 <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matches</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">matches</span><span class="o">(</span><span class="n">o</span><span class="o">,</span> <span class="kc">true</span><span class="o">);</span>
     <span class="o">}</span>
@@ -431,7 +431,7 @@
 </div>
 <p>在<code class="highlighter-rouge">AnyOf&lt;T&gt;</code>中并没有实现<code class="highlighter-rouge">matches(Object, boolean)</code>，唯一的解释是在<code class="highlighter-rouge">ShortcutCombination</code>中实现的：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Iterable</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Iterable</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
     <span class="kd">protected</span> <span class="kt">boolean</span> <span class="n">matches</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">,</span> <span class="kt">boolean</span> <span class="n">shortcut</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">for</span> <span class="o">(</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span> <span class="o">:</span> <span class="n">matchers</span><span class="o">)</span> <span class="o">{</span>
             <span class="k">if</span> <span class="o">(</span><span class="n">matcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">o</span><span class="o">)</span> <span class="o">==</span> <span class="n">shortcut</span><span class="o">)</span> <span class="o">{</span>
@@ -444,9 +444,9 @@
 </div>
 <p><code class="highlighter-rouge">ShortcutCombination</code>的设计应该是为了能够扩展出“任何不匹配”的子类，但在这有限的利用用途上，个人认为没必要抽像出一个中间层，又多加载了一个Class不是 - -！</p>
 
-<h5 id="isarrayt">2.4.4 IsArray<t></t></h5>
+<h5 id="isarrayt">2.4.4 IsArray<T></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;[]</span> <span class="n">elementMatchers</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;[]</span> <span class="n">elementMatchers</span><span class="o">;</span>
     <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">T</span><span class="o">[]</span> <span class="n">array</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">if</span> <span class="o">(</span><span class="n">array</span><span class="o">.</span><span class="na">length</span> <span class="o">!=</span> <span class="n">elementMatchers</span><span class="o">.</span><span class="na">length</span><span class="o">)</span> <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
         
@@ -460,9 +460,9 @@
 </div>
 <p>需要指定Matcher数组与传入对象数组按Index依次匹配。</p>
 
-<h5 id="isarraycontainingt">2.4.5 IsArrayContaining<t></t></h5>
+<h5 id="isarraycontainingt">2.4.5 IsArrayContaining<T></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">T</span><span class="o">[]</span> <span class="n">array</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">T</span><span class="o">[]</span> <span class="n">array</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">for</span> <span class="o">(</span><span class="n">T</span> <span class="n">item</span> <span class="o">:</span> <span class="n">array</span><span class="o">)</span> <span class="o">{</span>
             <span class="k">if</span> <span class="o">(</span><span class="n">elementMatcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">item</span><span class="o">))</span> <span class="o">{</span>
                 <span class="k">return</span> <span class="kc">true</span><span class="o">;</span>
@@ -474,9 +474,9 @@
 </div>
 <p>判定传入数组中是否含有与指定Matcher匹配的对象。</p>
 
-<h5 id="isarraycontaininginanyordere">2.4.6 IsArrayContainingInAnyOrder<e></e></h5>
+<h5 id="isarraycontaininginanyordere">2.4.6 IsArrayContainingInAnyOrder<E></E></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">IsIterableContainingInAnyOrder</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">iterableMatcher</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">IsIterableContainingInAnyOrder</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">iterableMatcher</span><span class="o">;</span>
     <span class="kd">private</span> <span class="kd">final</span> <span class="n">Collection</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">E</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
 
     <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">E</span><span class="o">[]</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
@@ -486,7 +486,7 @@
 </div>
 <p>从<code class="highlighter-rouge">matchesSafely</code>中可以发现匹配的核心在于<code class="highlighter-rouge">IsIterableContainingInAnyOrder</code>，我们来看下：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>	<span class="kd">private</span> <span class="kd">final</span> <span class="n">Collection</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="kd">private</span> <span class="kd">final</span> <span class="n">Collection</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
 	<span class="kd">protected</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">Iterable</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">T</span><span class="o">&gt;</span> <span class="n">items</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
       <span class="kd">final</span> <span class="n">Matching</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">matching</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Matching</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;(</span><span class="n">matchers</span><span class="o">,</span> <span class="n">mismatchDescription</span><span class="o">);</span>
       <span class="k">for</span> <span class="o">(</span><span class="n">T</span> <span class="n">item</span> <span class="o">:</span> <span class="n">items</span><span class="o">)</span> <span class="o">{</span>
@@ -501,9 +501,9 @@
 </div>
 <p>实际的判定是通过<code class="highlighter-rouge">Matching</code>来实现的，源码就不放上来了，原理上是对传入可遍历对象中的每一个对象遍历指定matchers集合找到一个可匹配的Matcher并移除，若找不到则返回fasle，如果传入的所有对象均能找到可匹配的Matcher，则在最后判定matchers集合是否为空（用于判定最初matchers集合的size是否与传入对象数一致），如果为空则表示<code class="highlighter-rouge">IsIterableContainingInAnyOrder</code>匹配成功。</p>
 
-<h5 id="isarraycontaininginordere">2.4.7 IsArrayContainingInOrder<e></e></h5>
+<h5 id="isarraycontaininginordere">2.4.7 IsArrayContainingInOrder<E></E></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Collection</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">E</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Collection</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">E</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
     <span class="kd">private</span> <span class="kd">final</span> <span class="n">IsIterableContainingInOrder</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">iterableMatcher</span><span class="o">;</span>
 
     <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">E</span><span class="o">[]</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
@@ -513,7 +513,7 @@
 </div>
 <p>赤裸裸的指向了<code class="highlighter-rouge">IsIterableContainingInOrder&lt;E&gt;</code>：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">E</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">E</span><span class="o">&gt;&gt;</span> <span class="n">matchers</span><span class="o">;</span>
     <span class="kd">protected</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">Iterable</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">E</span><span class="o">&gt;</span> <span class="n">iterable</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
         <span class="kd">final</span> <span class="n">MatchSeries</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">matchSeries</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MatchSeries</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;(</span><span class="n">matchers</span><span class="o">,</span> <span class="n">mismatchDescription</span><span class="o">);</span>
         <span class="k">for</span> <span class="o">(</span><span class="n">E</span> <span class="n">item</span> <span class="o">:</span> <span class="n">iterable</span><span class="o">)</span> <span class="o">{</span>
@@ -528,9 +528,9 @@
 </div>
 <p>其中<code class="highlighter-rouge">MatchSeries</code>执行了顺序匹配，即在顺序遍历被判定对象集合的时候，找到matchers中对应序号的Matcher进行匹配，匹配成功则进入下一轮匹配，匹配失败则直接返回false；当遍历结束之后判断matchers中所有Matcher是否被匹配，若还有未匹配Matcher则说明被判定对象集合的size与matchers的size不等，返回false；以上所有条件满足返回true。</p>
 
-<h5 id="isiterablecontaininginrelativeordere">2.4.8 IsIterableContainingInRelativeOrder<e></e></h5>
+<h5 id="isiterablecontaininginrelativeordere">2.4.8 IsIterableContainingInRelativeOrder<E></E></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">Iterable</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">E</span><span class="o">&gt;</span> <span class="n">iterable</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">boolean</span> <span class="nf">matchesSafely</span><span class="p">(</span><span class="n">Iterable</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">E</span><span class="o">&gt;</span> <span class="n">iterable</span><span class="o">,</span> <span class="n">Description</span> <span class="n">mismatchDescription</span><span class="o">)</span> <span class="o">{</span>
         <span class="n">MatchSeriesInRelativeOrder</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;</span> <span class="n">matchSeriesInRelativeOrder</span> <span class="o">=</span> <span class="k">new</span> <span class="n">MatchSeriesInRelativeOrder</span><span class="o">&lt;</span><span class="n">E</span><span class="o">&gt;(</span><span class="n">matchers</span><span class="o">,</span> <span class="n">mismatchDescription</span><span class="o">);</span>
         <span class="n">matchSeriesInRelativeOrder</span><span class="o">.</span><span class="na">processItems</span><span class="o">(</span><span class="n">iterable</span><span class="o">);</span>
         <span class="k">return</span> <span class="n">matchSeriesInRelativeOrder</span><span class="o">.</span><span class="na">isFinished</span><span class="o">();</span>
@@ -541,7 +541,7 @@
 
 <h5 id="ismapcontainingkv">2.4.9 IsMapContaining&lt;K,V&gt;</h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">K</span><span class="o">&gt;</span> <span class="n">keyMatcher</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">K</span><span class="o">&gt;</span> <span class="n">keyMatcher</span><span class="o">;</span>
     <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">valueMatcher</span><span class="o">;</span>
 
     <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">Map</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">K</span><span class="o">,</span> <span class="o">?</span> <span class="kd">extends</span> <span class="n">V</span><span class="o">&gt;</span> <span class="n">map</span><span class="o">)</span> <span class="o">{</span>
@@ -556,7 +556,7 @@
 </div>
 <p>在被判定Map中找到一个key与keyMatcher匹配且value与valueMatcher匹配的元素。</p>
 
-<h5 id="stacktraceprintingmatchert-extends-throwable">2.4.10 StacktracePrintingMatcher<t extends="" throwable=""></t></h5>
+<h5 id="stacktraceprintingmatchert-extends-throwable">2.4.10 StacktracePrintingMatcher<T extends="" Throwable=""></T></h5>
 
 <p><code class="highlighter-rouge">java
     private final Matcher&lt;T&gt; throwableMatcher;
@@ -575,9 +575,9 @@
 </code>
 因此这个类可用于忽略已知的指定Throwable，而抛出那些未知的以及关注的Throwable的详细异常栈信息。</p>
 
-<h5 id="throwablecausematchert-extends-throwable">2.4.11 ThrowableCauseMatcher<t extends="" throwable=""></t></h5>
+<h5 id="throwablecausematchert-extends-throwable">2.4.11 ThrowableCauseMatcher<T extends="" Throwable=""></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">Throwable</span><span class="o">&gt;</span> <span class="n">causeMatcher</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">Throwable</span><span class="o">&gt;</span> <span class="n">causeMatcher</span><span class="o">;</span>
     <span class="kd">protected</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">T</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">causeMatcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">item</span><span class="o">.</span><span class="na">getCause</span><span class="o">());</span>
     <span class="o">}</span>
@@ -585,9 +585,9 @@
 </div>
 <p>Throwable的Cause与指定Matcher相匹配。</p>
 
-<h5 id="throwablemessagematchert-extends-throwable">2.4.12 ThrowableMessageMatcher<t extends="" throwable=""></t></h5>
+<h5 id="throwablemessagematchert-extends-throwable">2.4.12 ThrowableMessageMatcher<T extends="" Throwable=""></T></h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">;</span>
     <span class="kd">protected</span> <span class="kt">boolean</span> <span class="n">matchesSafely</span><span class="o">(</span><span class="n">T</span> <span class="n">item</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">matcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">item</span><span class="o">.</span><span class="na">getMessage</span><span class="o">());</span>
     <span class="o">}</span>
@@ -598,7 +598,7 @@
 <h4 id="matcher-5">2.5 Matcher家族之服务系</h4>
 <p>目前看起来这一系只有一根独苗<code class="highlighter-rouge">DescribedAs&lt;T&gt;</code>：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">Matcher</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="n">matcher</span><span class="o">;</span>
     <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">matches</span><span class="o">(</span><span class="n">Object</span> <span class="n">o</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">return</span> <span class="n">matcher</span><span class="o">.</span><span class="na">matches</span><span class="o">(</span><span class="n">o</span><span class="o">);</span>
     <span class="o">}</span>
@@ -609,7 +609,7 @@
 </div>
 <p>其<code class="highlighter-rouge">matches</code>及<code class="highlighter-rouge">describeMismatch</code>方法均直接转给被其包装的Matcher对象，这些都不是重点，重点是对<code class="highlighter-rouge">describeTo</code>做了处理，支持参数化描述：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">descriptionTemplate</span><span class="o">;</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kd">final</span> <span class="n">String</span> <span class="n">descriptionTemplate</span><span class="o">;</span>
     <span class="kd">private</span> <span class="kd">final</span> <span class="n">Object</span><span class="o">[]</span> <span class="n">values</span><span class="o">;</span>
     <span class="kd">private</span> <span class="kd">final</span> <span class="kd">static</span> <span class="n">Pattern</span> <span class="n">ARG_PATTERN</span> <span class="o">=</span> <span class="n">Pattern</span><span class="o">.</span><span class="na">compile</span><span class="o">(</span><span class="s">"%([0-9]+)"</span><span class="o">);</span> 
     <span class="kd">public</span> <span class="kt">void</span> <span class="n">describeTo</span><span class="o">(</span><span class="n">Description</span> <span class="n">description</span><span class="o">)</span> <span class="o">{</span>
@@ -633,7 +633,7 @@
 <h3 id="description">3. Description</h3>
 <p>其实到这里已经可以结束Matcher的分析了，但是为了更完整，我决定把<code class="highlighter-rouge">Description</code>这最后一块处女地也放进来：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">interface</span> <span class="nc">Description</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">interface</span> <span class="nc">Description</span> <span class="o">{</span>
         <span class="kd">static</span> <span class="kd">final</span> <span class="n">Description</span> <span class="n">NONE</span> <span class="o">=</span> <span class="k">new</span> <span class="n">NullDescription</span><span class="o">();</span>
         <span class="n">Description</span> <span class="n">appendText</span><span class="o">(</span><span class="n">String</span> <span class="n">text</span><span class="o">);</span>
         <span class="n">Description</span> <span class="n">appendDescriptionOf</span><span class="o">(</span><span class="n">SelfDescribing</span> <span class="n">value</span><span class="o">);</span>
@@ -648,7 +648,7 @@
 </div>
 <p><code class="highlighter-rouge">Description</code> 中所有方法都类似于生成器中的方法，可用于链式编程。其目前含有两个常用子类：<code class="highlighter-rouge">NullDescription</code>及<code class="highlighter-rouge">StringDescription</code>：其中<code class="highlighter-rouge">NullDescription</code>重写所有方法均什么都不做仅返回<code class="highlighter-rouge">this</code>，从而实现吞没所有描述；我们主要分析下<code class="highlighter-rouge">StringDescription</code>：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">StringDescription</span> <span class="kd">extends</span> <span class="n">BaseDescription</span><span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kd">class</span> <span class="nc">StringDescription</span> <span class="kd">extends</span> <span class="n">BaseDescription</span><span class="o">{</span>
         <span class="kd">private</span> <span class="kd">final</span> <span class="n">Appendable</span> <span class="n">out</span><span class="o">;</span>
 
         <span class="nd">@Override</span>
@@ -674,7 +674,7 @@
 <p>采用一个<code class="highlighter-rouge">Appendable</code>将字符及字符串描述附加到该Description对象中，并且我们发现<code class="highlighter-rouge">StringDescription</code>继承自<code class="highlighter-rouge">BaseDescription</code>，所以还需要感受下<code class="highlighter-rouge">BaseDescription</code>：
 先来看两个基本方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">append</span><span class="p">(</span><span class="n">String</span> <span class="n">str</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">protected</span> <span class="kt">void</span> <span class="nf">append</span><span class="p">(</span><span class="n">String</span> <span class="n">str</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">str</span><span class="o">.</span><span class="na">length</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
             <span class="n">append</span><span class="o">(</span><span class="n">str</span><span class="o">.</span><span class="na">charAt</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
         <span class="o">}</span>
@@ -684,7 +684,7 @@
 </div>
 <p>要求子类必须重写<code class="highlighter-rouge">append(char)</code>，同时子类也可以重写<code class="highlighter-rouge">append(String)</code>以实现效率提升，子类中的这两个基本方法主要决定数据应该输出到哪里，是其他所有方法实现的基础。接下来我们来看两个上层的方法：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="n">Description</span> <span class="nf">appendValue</span><span class="p">(</span><span class="n">Object</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="n">Description</span> <span class="nf">appendValue</span><span class="p">(</span><span class="n">Object</span> <span class="n">value</span><span class="o">)</span> <span class="o">{</span>
         <span class="k">if</span> <span class="o">(</span><span class="n">value</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
             <span class="n">append</span><span class="o">(</span><span class="s">"null"</span><span class="o">);</span>
         <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">value</span> <span class="k">instanceof</span> <span class="n">String</span><span class="o">)</span> <span class="o">{</span>
@@ -718,7 +718,7 @@
 </div>
 <p>这个方法将所有类型转换成有识别性的字符串。</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="n">Description</span> <span class="nf">appendList</span><span class="p">(</span><span class="n">String</span> <span class="n">start</span><span class="o">,</span> <span class="n">String</span> <span class="n">separator</span><span class="o">,</span> <span class="n">String</span> <span class="n">end</span><span class="o">,</span> <span class="n">Iterator</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">SelfDescribing</span><span class="o">&gt;</span> <span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="n">Description</span> <span class="nf">appendList</span><span class="p">(</span><span class="n">String</span> <span class="n">start</span><span class="o">,</span> <span class="n">String</span> <span class="n">separator</span><span class="o">,</span> <span class="n">String</span> <span class="n">end</span><span class="o">,</span> <span class="n">Iterator</span><span class="o">&lt;?</span> <span class="kd">extends</span> <span class="n">SelfDescribing</span><span class="o">&gt;</span> <span class="n">i</span><span class="o">)</span> <span class="o">{</span>
         <span class="kt">boolean</span> <span class="n">separate</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
         
         <span class="n">append</span><span class="o">(</span><span class="n">start</span><span class="o">);</span>
@@ -765,6 +765,8 @@
     <h1>最新文章</h1>
     <ul>
         
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
           <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
         
           <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
@@ -772,8 +774,6 @@
           <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
         
           <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
-        
-          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
         
     </ul>
 </div>

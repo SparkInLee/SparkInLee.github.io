@@ -60,7 +60,7 @@
 
 <h3 id="true">1、True断言</h3>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertTrue</span><span class="o">(</span><span class="kt">boolean</span><span class="o">)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">assertTrue</span><span class="o">(</span><span class="kt">boolean</span><span class="o">)</span>
 <span class="n">assertTrue</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="kt">boolean</span><span class="o">)</span>
 </code></pre>
 </div>
@@ -68,7 +68,7 @@
 
 <h3 id="section">2、非等断言</h3>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertNotEquals</span><span class="o">(</span><span class="n">Object</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">assertNotEquals</span><span class="o">(</span><span class="n">Object</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
 <span class="n">assertNotEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
 <span class="n">assertNotEquals</span><span class="o">(</span><span class="kt">long</span><span class="o">,</span> <span class="kt">long</span><span class="o">)</span>
 <span class="n">assertNotEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="kt">long</span><span class="o">,</span> <span class="kt">long</span><span class="o">)</span>
@@ -84,7 +84,7 @@
 
 <h2 id="section-1">3、 数组断言</h2>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// [Object | boolean | byte | char | short | int | long | double | float]</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// [Object | boolean | byte | char | short | int | long | double | float]</span>
 <span class="n">assertArrayEquals</span><span class="o">(</span><span class="n">Object</span><span class="o">[],</span> <span class="n">Object</span><span class="o">[])</span> 
 
 <span class="n">assertArrayEquals</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">[],</span> <span class="n">Object</span><span class="o">[])</span>
@@ -94,7 +94,7 @@
 
 <h2 id="section-2">4、非空断言</h2>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertNotNull</span><span class="o">(</span><span class="n">Object</span><span class="o">)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">assertNotNull</span><span class="o">(</span><span class="n">Object</span><span class="o">)</span>
 <span class="n">assertNotNull</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
 </code></pre>
 </div>
@@ -102,7 +102,7 @@
 
 <h2 id="section-3">5、相同断言</h2>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertSame</span><span class="o">(</span><span class="n">Object</span><span class="o">)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">assertSame</span><span class="o">(</span><span class="n">Object</span><span class="o">)</span>
 <span class="n">assertSame</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">Object</span><span class="o">)</span>
 </code></pre>
 </div>
@@ -110,7 +110,7 @@
 
 <h2 id="section-4">6、匹配断言</h2>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="n">assertThat</span><span class="o">(</span><span class="n">T</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;)</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">assertThat</span><span class="o">(</span><span class="n">T</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;)</span>
 <span class="n">assertThat</span><span class="o">(</span><span class="n">String</span><span class="o">,</span> <span class="n">T</span><span class="o">,</span> <span class="n">Matcher</span><span class="o">&lt;?</span> <span class="kd">super</span> <span class="n">T</span><span class="o">&gt;)</span>
 </code></pre>
 </div>
@@ -141,6 +141,8 @@
     <h1>最新文章</h1>
     <ul>
         
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
           <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
         
           <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
@@ -148,8 +150,6 @@
           <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
         
           <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
-        
-          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
         
     </ul>
 </div>

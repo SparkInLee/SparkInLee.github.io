@@ -74,7 +74,7 @@
 
 <h4 id="section-2">1. 创建仓库</h4>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 初始化本地仓库，dir参数指创建指定目录并初始化为本地仓库</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 初始化本地仓库，dir参数指创建指定目录并初始化为本地仓库</span>
 git init <span class="o">[</span>dir]
 
 <span class="c"># 克隆远程仓库，会包含远程库的所有信息，并在本地创建与远程master分支（默认分支）关联的本地分支；</span>
@@ -87,7 +87,7 @@ git remote add origin <span class="o">[</span>url]
 </div>
 
 <h4 id="section-3">2. 增加或删除文件</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 将指定文件夹或目录（包含子目录）添加至暂存区</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 将指定文件夹或目录（包含子目录）添加至暂存区</span>
 git add <span class="o">[</span>file | dir] <span class="o">[</span>file | dir] ···
 
 <span class="c"># 将当前目录下所有文件到暂存区</span>
@@ -105,7 +105,7 @@ git mv <span class="o">[</span>file-original] <span class="o">[</span>file-renam
 </div>
 
 <h4 id="section-4">3. 提交修改</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 提交暂存区修改到本地仓库</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 提交暂存区修改到本地仓库</span>
 git commit -m “commit message”
 
 <span class="c"># 提交工作区或暂存区中指定文件或目录到本地仓库</span>
@@ -124,7 +124,7 @@ git commit -m “commit message” --amend <span class="o">[</span>file | dir] �
 </div>
 
 <h4 id="section-5">4.撤销修改</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 恢复暂存区的指定文件到工作区</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 恢复暂存区的指定文件到工作区</span>
 git checkout <span class="o">[</span>file | dir]
 
 <span class="c"># 恢复本地仓库中指定commit的指定文件到工作区</span>
@@ -152,7 +152,7 @@ git revert <span class="o">[</span>commit]
 </div>
 
 <h4 id="section-6">5. 分支操作</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 列出所有本地分支</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 列出所有本地分支</span>
 git branch
 
 <span class="c"># 列出所有远程分支</span>
@@ -196,7 +196,7 @@ git merge <span class="o">[</span>branch]
 </div>
 
 <h4 id="section-7">6. 标签操作</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 列出所有tag</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 列出所有tag</span>
 git tag
 
 <span class="c"># 新建一个tag在当前commit</span>
@@ -231,13 +231,13 @@ git tag -s <span class="o">[</span>tag]
 <h4 id="section-8">7. 查看信息</h4>
 <p><em>查看当前修改状态</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>git status
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code>git status
 </code></pre>
 </div>
 
 <p><em>查看日志信息</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示当前分支的版本历史，--stat会显示每次commit的修改文件及其对应的修改数</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示当前分支的版本历史，--stat会显示每次commit的修改文件及其对应的修改数</span>
 git log <span class="o">[</span>--stat]
 
 <span class="c"># 显示截止到指定commit的版本历史</span>
@@ -263,7 +263,7 @@ git blame <span class="o">[</span>file]
 
 <p><em>查看差异信息</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示工作区与暂存区的差异</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示工作区与暂存区的差异</span>
 git diff
 
 <span class="c"># 显示工作区与指定commit之间的差异</span>
@@ -281,7 +281,7 @@ git diff <span class="o">[</span>lt-commit]...[gt-commit]
 
 <p><em>查看commit或tag信息</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示某次commit或tag的所有元数据修改</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示某次commit或tag的所有元数据修改</span>
 git show <span class="o">[</span>commit | tag]
 
 <span class="c"># 显示某次commit或tag发生变化的文件名</span>
@@ -294,12 +294,12 @@ git show <span class="o">[</span>commit | tag]:[filename]
 
 <p><em>查看最近git操作</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>git reflog
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code>git reflog
 </code></pre>
 </div>
 
 <h4 id="section-9">8. 远程同步</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示所有远程仓库</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 显示所有远程仓库</span>
 git remote -v
 
 <span class="c"># 显示某个远程仓库的信息</span>
@@ -326,7 +326,7 @@ git push <span class="o">[</span>remote] --all
 </div>
 
 <h4 id="section-10">9. 其他</h4>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 调整指定commit及之后的所有commit的结构</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 调整指定commit及之后的所有commit的结构</span>
 git rebase -i <span class="o">[</span>commit]
 <span class="c"># 调整两个commit之间（包含这两个commit）的所有commit的结构</span>
 git rebase -i <span class="o">[</span>lt-commit]...[gt-commit]
@@ -353,7 +353,7 @@ git rebase -i <span class="o">[</span>lt-commit]...[gt-commit]
 <h4 id="section-11">10. 配置</h4>
 
 <h5 id="gitconfig">~/.gitconfig文件</h5>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 配置git的用户信息</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 配置git的用户信息</span>
 <span class="o">[</span>user]
     name <span class="o">=</span> xxx
     email <span class="o">=</span> xxx
@@ -364,7 +364,7 @@ git rebase -i <span class="o">[</span>lt-commit]...[gt-commit]
 </div>
 
 <h5 id="projectgitconfig">project/.git/config文件</h5>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 核心配置，尚在研究中</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 核心配置，尚在研究中</span>
 <span class="o">[</span>core]
      repositoryformatversion <span class="o">=</span> 0
      filemode <span class="o">=</span> <span class="nb">true
@@ -397,7 +397,7 @@ git rebase -i <span class="o">[</span>lt-commit]...[gt-commit]
 
 <p><em>假设正在dev分支上开发时，接到优先级更高的bug修复任务，因此需要先保存dev分支的现场，然后新开bug分支完成修复任务之后再恢复dev分支的现场，继续之前的开发：</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 假设当前在dev分支</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 假设当前在dev分支</span>
 <span class="c"># 保存dev分支的现场，此时工作区变为clean</span>
 git stash
 
@@ -418,7 +418,7 @@ git stash pop
 
 <p><em>stash用于保存现场，现场会被保存在一个现场栈中，有以下操作命令:</em></p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c"># 查看现场栈信息</span>
+<div class="language-shell highlighter-rouge"><pre class="highlight"><code><span class="c"># 查看现场栈信息</span>
 git stash list
 
 <span class="c"># 保存当前分支的现场</span>
@@ -470,6 +470,8 @@ git stash pop
     <h1>最新文章</h1>
     <ul>
         
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
           <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
         
           <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
@@ -477,8 +479,6 @@ git stash pop
           <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
         
           <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
-        
-          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
         
     </ul>
 </div>

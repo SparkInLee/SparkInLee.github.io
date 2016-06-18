@@ -99,7 +99,7 @@ Segment具有两个属性shared及owner：</p>
 <h5 id="splitint-bytecount">3. split(int byteCount)</h5>
 <p>在该Segment之前新建并插入一个新的Segment，并设置底层字节数组为共享模式，通过设定两个Segment的pos及limit调整各自的可用数据范围，实现Segment的分割：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="n">Segment</span> <span class="nf">split</span><span class="p">(</span><span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="n">Segment</span> <span class="nf">split</span><span class="p">(</span><span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">byteCount</span> <span class="o">&gt;</span> <span class="n">limit</span> <span class="o">-</span> <span class="n">pos</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">();</span>
     <span class="n">Segment</span> <span class="n">prefix</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Segment</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
     <span class="n">prefix</span><span class="o">.</span><span class="na">limit</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">.</span><span class="na">pos</span> <span class="o">+</span> <span class="n">byteCount</span><span class="o">;</span>
@@ -113,7 +113,7 @@ Segment具有两个属性shared及owner：</p>
 <h5 id="compact">4. compact()</h5>
 <p>把该Segment的数据转移至其前一个Segment，然后移除该Segment，实现Segment的压缩：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">compact</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">compact</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">prev</span> <span class="o">==</span> <span class="k">this</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalStateException</span><span class="o">();</span>
     <span class="k">if</span> <span class="o">(!</span><span class="n">prev</span><span class="o">.</span><span class="na">owner</span><span class="o">)</span> <span class="k">return</span><span class="o">;</span> <span class="c1">// Cannot compact: prev isn't writable.</span>
     <span class="kt">int</span> <span class="n">byteCount</span> <span class="o">=</span> <span class="n">limit</span> <span class="o">-</span> <span class="n">pos</span><span class="o">;</span>
@@ -129,7 +129,7 @@ Segment具有两个属性shared及owner：</p>
 <h5 id="writetosegment-sink-int-bytecount">5. writeTo(Segment sink, int byteCount)</h5>
 <p>将该Segment中byteCount个字节传输至sink中：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">writeTo</span><span class="p">(</span><span class="n">Segment</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">writeTo</span><span class="p">(</span><span class="n">Segment</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">int</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(!</span><span class="n">sink</span><span class="o">.</span><span class="na">owner</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">();</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">sink</span><span class="o">.</span><span class="na">limit</span> <span class="o">+</span> <span class="n">byteCount</span> <span class="o">&gt;</span> <span class="n">SIZE</span><span class="o">)</span> <span class="o">{</span>
       <span class="c1">// We can't fit byteCount bytes at the sink's current position. Shift sink first.</span>
@@ -152,7 +152,7 @@ Segment具有两个属性shared及owner：</p>
 <h5 id="timeout-1">1. 基本Timeout</h5>
 <p>Timeout通过以下属性来设定某操作的限时：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 是否有截止时间</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 是否有截止时间</span>
 <span class="kd">private</span> <span class="kt">boolean</span> <span class="n">hasDeadline</span><span class="o">;</span>
 <span class="c1">// 截止时间，是绝对时间，当到达该时间点时操作超时</span>
 <span class="kd">private</span> <span class="kt">long</span> <span class="n">deadlineNanoTime</span><span class="o">;</span>
@@ -162,7 +162,7 @@ Segment具有两个属性shared及owner：</p>
 </div>
 <p>而Timeout是通过调用以下函数抛出超时异常：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">throwIfReached</span><span class="p">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kt">void</span> <span class="nf">throwIfReached</span><span class="p">(</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">Thread</span><span class="o">.</span><span class="na">interrupted</span><span class="o">())</span> <span class="o">{</span>
       <span class="k">throw</span> <span class="k">new</span> <span class="n">InterruptedIOException</span><span class="o">(</span><span class="s">"thread interrupted"</span><span class="o">);</span>
     <span class="o">}</span>
@@ -184,7 +184,7 @@ Segment具有两个属性shared及owner：</p>
 <p>由于超时链表中的所有超时器共用一个看门狗定时器，因此在使用异步超时器时需特别注意：不可在timeout()中做耗时操作，否则可能会导致链表中其他超时器不准确。  <br />
 AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作完成之后调用exit()来判定是否超时：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">enter</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">final</span> <span class="kt">void</span> <span class="nf">enter</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
 	<span class="c1">// 省略无关代码</span>
     <span class="n">scheduleTimeout</span><span class="o">(</span><span class="k">this</span><span class="o">,</span> <span class="n">timeoutNanos</span><span class="o">,</span> <span class="n">hasDeadline</span><span class="o">);</span>
 <span class="o">}</span>
@@ -234,7 +234,7 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
 <p>前文中已经提及：Buffer的底层数据存储结构是由Segment组成的循环双链表，数据的复制和传输通过操作Segment的归属及limit、pos来实现，因此非常高效。另一方面，Buffer实现了BufferedSource及BufferedSink中的相关接口，因此实现了绝大部分常用字节及字符操作接口。  <br />
 首先，先感受下Source及Sink中的基本接口的实现：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="nd">@Override</span> 
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="nd">@Override</span> 
 <span class="kd">public</span> <span class="kt">long</span> <span class="nf">read</span><span class="p">(</span><span class="n">Buffer</span> <span class="n">sink</span><span class="o">,</span> <span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">sink</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"sink == null"</span><span class="o">);</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">byteCount</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"byteCount &lt; 0: "</span> <span class="o">+</span> <span class="n">byteCount</span><span class="o">);</span>
@@ -290,7 +290,7 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
 <p>以上是Buffer中的实现源码，其在实现write函数时尽可能减少cpu及memory的消耗，建议查看源码中write函数的注释，这样可以更好的理解该方法设计的理念。在以上代码中，包含了以Segment为底层存储结构的Buffer在字节操作上的基本方式，其他所有字节或字符操作接口的实现均与此类似。  <br />
 主要接口包括：</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">BufferedSource</span> <span class="kd">extends</span> <span class="n">Source</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">BufferedSource</span> <span class="kd">extends</span> <span class="n">Source</span> <span class="o">{</span>
   <span class="n">Buffer</span> <span class="n">buffer</span><span class="o">();</span>
   <span class="kt">boolean</span> <span class="n">exhausted</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
   <span class="kt">void</span> <span class="n">require</span><span class="o">(</span><span class="kt">long</span> <span class="n">byteCount</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
@@ -332,7 +332,7 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
 </code></pre>
 </div>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">BufferedSink</span> <span class="kd">extends</span> <span class="n">Sink</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">BufferedSink</span> <span class="kd">extends</span> <span class="n">Sink</span> <span class="o">{</span>
   <span class="n">Buffer</span> <span class="n">buffer</span><span class="o">();</span>
   <span class="n">BufferedSink</span> <span class="n">write</span><span class="o">(</span><span class="n">ByteString</span> <span class="n">byteString</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
   <span class="n">BufferedSink</span> <span class="n">write</span><span class="o">(</span><span class="kt">byte</span><span class="o">[]</span> <span class="n">source</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span><span class="o">;</span>
@@ -366,7 +366,7 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
 <p>Okio中主要提供将其他数据源包装成Source、Sink的接口以及将Source、Sink包装成Buffer的接口，以Source为例说明：</p>
 
 <h5 id="source">1. 将其他数据源包装成Source</h5>
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// 对于本身没有超时机制的流（如socket）采用AsyncTimeout实现超时机制</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 对于本身没有超时机制的流（如socket）采用AsyncTimeout实现超时机制</span>
 <span class="kd">public</span> <span class="kd">static</span> <span class="n">Source</span> <span class="nf">source</span><span class="p">(</span><span class="kd">final</span> <span class="n">Socket</span> <span class="n">socket</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">IOException</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">socket</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"socket == null"</span><span class="o">);</span>
     <span class="n">AsyncTimeout</span> <span class="n">timeout</span> <span class="o">=</span> <span class="n">timeout</span><span class="o">(</span><span class="n">socket</span><span class="o">);</span>
@@ -425,7 +425,7 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
 
 <h5 id="sourcebuffersource">2. 将Source包装成BufferSource</h5>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span> <span class="n">BufferedSource</span> <span class="nf">buffer</span><span class="p">(</span><span class="n">Source</span> <span class="n">source</span><span class="o">)</span> <span class="o">{</span>
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">public</span> <span class="kd">static</span> <span class="n">BufferedSource</span> <span class="nf">buffer</span><span class="p">(</span><span class="n">Source</span> <span class="n">source</span><span class="o">)</span> <span class="o">{</span>
     <span class="k">if</span> <span class="o">(</span><span class="n">source</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="n">IllegalArgumentException</span><span class="o">(</span><span class="s">"source == null"</span><span class="o">);</span>
     <span class="k">return</span> <span class="k">new</span> <span class="n">RealBufferedSource</span><span class="o">(</span><span class="n">source</span><span class="o">);</span>
 <span class="o">}</span>
@@ -449,6 +449,8 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
           </div>
           <div class="pagination">
               
+                <a class="btn btn-default" href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3" class="next">下一篇</a>
+              
               
                 <a class="btn btn-default" href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3" class="previous">上一篇</a>
               
@@ -461,6 +463,8 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
     <h1>最新文章</h1>
     <ul>
         
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
           <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
         
           <li><a href="/2016/03/Picasso%E8%AF%A6%E8%A7%A3">Picasso详解</a></li>
@@ -468,8 +472,6 @@ AsyncTimeout通过enter()将自己插入超时器单链表中，然后在操作�
           <li><a href="/2016/01/Handler%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%88%86%E6%9E%90">Handler运行机制分析</a></li>
         
           <li><a href="/2016/01/JUnit%E4%B9%8BMatcher">JUnit之Matcher</a></li>
-        
-          <li><a href="/2016/01/JUnit%E4%B9%8BAssertion">JUnit之Assertion</a></li>
         
     </ul>
 </div>
