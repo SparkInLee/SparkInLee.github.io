@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SparkInLee's Blog</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <link href="/images/favicon.png" rel="shortcut icon">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="SparkInLee's Blog" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <li><a href="/about.html">关于我</a></li>
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/08/Android-Animation%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3">Android Animation运行原理详解</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-08-android-animation-e8-bf-90-e8-a1-8c-e5-8e-9f-e7-90-86-e8-af-a6-e8-a7-a3">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本文根据Animation的源码分析其运行原理，包括：Matrix如何控制动画参数；动画中各参数具体起什么作用；透明度动画、缩放动画、平移动画以及旋转动画的运行逻辑；动画在View的绘制过程中如何被应用。
+<!-- excerpt split --></p>
+
+<hr />
+
+<p><strong>文章原创，允许转载，转载请注明出处。</strong></p>
+
+<hr />
+
+<h3 id="section">1. 前言</h3>
+<p>作为Android程序员，或者是想要去模仿一些酷炫的效果，或者是为了实现视觉的变态需求，或者是压抑不住内心的创造欲想要炫技，我们不可避免地需要做各种动画。Android中，动画主要分为帧动画、插间动画以及属性动画。帧动画最为简单，是用一系列的素材作为关键帧逐帧播放，常用于制作加载动画，其工作量主要在设计部分；插间动画与属性动画则更多地是需要开发通过控制各种动画参数来实现，只有系统地理解Android中动画运行的原理，才能创作出更出色的动画，属性动画在下一篇文章中分析，本文主要分享我在探索插间动画运行原理过程中的一些收获，包括：Matrix如何控制动画参数；动画中各参数具体起什么作用；透明度动画、缩放动画、平移动画以及旋转动画的运行逻辑；动画在View的绘制过程中如何被应用。</p>
+
+<h3 id="matrix">2. Matrix介绍</h3>
+<p>在Android中，Matrix是一个3 x 3的矩阵：</p>
+
+<p><a href="/images/android_matrix.jpg" style="display:block;text-align:center;">
+  <img src="/images/android_matrix.jpg" style="max-width:100%;max-height:100%;" />
+</a></p>
+
+<p>Matrix可将一个点映射到另一个点，矩阵中包含了处理缩放、透视以及平移的区域，从而可用于控制实现平移、缩放、旋转等动画效果。强烈建议阅读<a href="http://zensheno.blog.51cto.com/2712776/513652">Android Matrix理论与应用详解</a>以更深入地了解Matrix实现动画控制原理，这里仅摘录其中的关键信息：</p>
+
+<blockquote>
+  <p>结论一：设对给定的图像依次进行了基本变化F1、F2、F3…..、Fn，它们的变化矩阵分别为T1、T2、T3…..、Tn，图像复合变化的矩阵T可以表示为：T = TnTn-1…T1。</p>
+
+  <p>结论二：Preconcats matrix相当于右乘矩阵，Postconcats  matrix相当于左乘矩阵。</p>
+</blockquote>
+
+<p>Matrix还给我们提供了各种友好的接口来组合生成复杂的动画，举个例子：假如我们想要实现一个平移（a,b）之后旋转(c,d)的动画，那用Matrix的实现代码就是这样的：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="n">Matrix</span> <span class="n">matrix</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Matrix</span><span class="o">();</span>
+    <span class="n">matrix</span><span class="o">.</span><span class="na">setTranslate</span><span class="o">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">);</span>
+    <span class="n">matrix</span><span class="o">.</span><span class="na">postScale</span><span class="o">(</span><span class="n">c</span><span class="o">,</span> <span class="n">d</span><span class="o">);</span>
+</code></pre>
+</div>
+
+<h3 id="animation">3. Animation运行原理分析</h3>
+
+<h4 id="section-1">(1) 基本属性介绍</h4>
+
+<p>使用过Animation的同学对下述基本属性应该非常熟悉，这里为了文章完整性，特地赘述一下：</p>
+
+<ul>
+  <li>mStartTime：动画实际开始时间</li>
+  <li>mStartOffset：动画延迟时间</li>
+  <li>mFillEnabled：mFillBefore及mFillAfter是否使能</li>
+  <li>mFillBefore：动画结束之后是否需要进行应用动画</li>
+  <li>mFillAfter：动画开始之前是否需要进行应用动画</li>
+  <li>mDuration：单次动画运行时长</li>
+  <li>mRepeatMode：动画重复模式（RESTART、REVERSE）</li>
+  <li>mRepeatCount：动画重复次数（INFINITE，直接值）</li>
+  <li>mInterceptor：动画插间器</li>
+  <li>mListener：动画开始、结束、重复回调监听器</li>
+</ul>
+
+<p>虽然大部分都知道上面这些属性怎么用，但是可能还是有一些人对这些字段为什么有这样的作用不甚明白，于是我们就来分析一下。</p>
+
+<h4 id="section-2">(2) 计算动画数据</h4>
+
+<p>Animation在其<code class="highlighter-rouge">getTransformation</code>函数被调用时会计算一帧动画数据，而上面这些属性基本都是在计算动画数据时发光发热，我们先看看<code class="highlighter-rouge">getTransformation</code>函数的运行逻辑：</p>
+
+<ol>
+  <li>若<code class="highlighter-rouge">startTime</code>为<code class="highlighter-rouge">START_ON_FIRST_FRAME(值为-1)</code>时，将<code class="highlighter-rouge">startTime</code>设定为<code class="highlighter-rouge">curTime</code></li>
+  <li>计算当前动画进度：
+ <code class="highlighter-rouge">normalizedTime = (curTime - (startTime + startOffset))/duration</code></li>
+  <li>若<code class="highlighter-rouge">mFillEnabled==false</code>：将<code class="highlighter-rouge">normalisedTime</code>夹逼至[0.0f, 1.0f]</li>
+  <li>判断是否需要计算动画数据：
+    <ul>
+      <li>若<code class="highlighter-rouge">normalisedTime</code>在[0.0f, 1.0f]，需计算动画数据</li>
+      <li>若<code class="highlighter-rouge">normalisedTime</code>不在[0.0f, 1.0f]：
+        <ul>
+          <li><code class="highlighter-rouge">normalisedTime&lt;0.0f</code>, 仅当<code class="highlighter-rouge">mFillBefore==true</code>时才计算动画数据</li>
+          <li><code class="highlighter-rouge">normalisedTime&gt;1.0f</code>, 仅当<code class="highlighter-rouge">mFillAfter==true</code>时才计算动画数据</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>若需需要计算动画数据：
+    <ul>
+      <li>若当前为第一帧动画，触发<code class="highlighter-rouge">mListener.onAnimationStart</code></li>
+      <li>若<code class="highlighter-rouge">mFillEnabled==false</code>：将<code class="highlighter-rouge">normalisedTime</code>夹逼至[0.0f, 1.0f]</li>
+      <li>根据插间器<code class="highlighter-rouge">mInterpolator</code>调整动画进度：
+ 	<code class="highlighter-rouge">interpolatedTime = mInterpolator.getInterpolation(normalizedTime)</code></li>
+      <li>若动画反转标志位<code class="highlighter-rouge">mCycleFlip</code>为<code class="highlighter-rouge">true</code>，则
+ 	<code class="highlighter-rouge">interpolatedTime = 1.0 - normalizedTime</code></li>
+      <li>调用动画更新函数<code class="highlighter-rouge">applyTransformation(interpolatedTime, transformation)</code>计算出动画数据</li>
+    </ul>
+  </li>
+  <li>若夹逼之前<code class="highlighter-rouge">normalisedTime</code>大于1.0f, 则判断是否需继续执行动画：
+    <ul>
+      <li>已执行次数<code class="highlighter-rouge">mRepeatCount</code>等于需执行次数<code class="highlighter-rouge">mRepeated</code>
+        <ul>
+          <li>若未触发<code class="highlighter-rouge">mListener.onAnimationEnd</code>，则触发之</li>
+        </ul>
+      </li>
+      <li>已执行次数<code class="highlighter-rouge">mRepeatCount</code>不等于需执行次数<code class="highlighter-rouge">mRepeated</code>
+        <ul>
+          <li>自增<code class="highlighter-rouge">mRepeatCount</code></li>
+          <li>重置<code class="highlighter-rouge">mStartTime</code>为-1</li>
+          <li>若<code class="highlighter-rouge">mRepeatMode</code>为<code class="highlighter-rouge">REVERSE</code>，则取反<code class="highlighter-rouge">mCycleFlip</code></li>
+          <li>触发<code class="highlighter-rouge">mListener.onAnimationRepeat</code></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ol>
+
+<p>这一段是根据<code class="highlighter-rouge">getTransformation</code>源码分析出来的，建议有兴趣的同学可以直接查看源码。上面这段分析留了一个不小的悬念，那就是动画更新函数是什么鬼，这个函数在Animation这个抽象类中仅仅是个钩子函数，由其子类提供具体实现，于是自然而然地引出了我们的下一个主题：主流动画介绍。</p>
+
+<h4 id="section-3">(3) 主流动画分析</h4>
+
+<ul>
+  <li>
+    <h5 id="alphaanimation"><em>AlphaAnimation：透明度动画</em></h5>
+    <ul>
+      <li>基本属性
+        <ul>
+          <li>mFromAlpha：起始透明度</li>
+          <li>mToAlpha：终止透明度</li>
+        </ul>
+      </li>
+      <li>applyTransformation函数实现
+        <ul>
+          <li>transformation.setAlpha(mFromAlpha + ((mToAlpha - mFromAlpha) * interpolatedTime))</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <h5 id="scaleanimation"><em>ScaleAnimation：缩放动画</em></h5>
+    <ul>
+      <li>基本属性
+        <ul>
+          <li>mFromX：起始X值</li>
+          <li>mToX：终止X值</li>
+          <li>mFromY：起始Y值</li>
+          <li>mToY：终止Y值</li>
+          <li>mPivotX：缩放中心点X坐标</li>
+          <li>mPivotY：缩放中心点Y坐标</li>
+        </ul>
+      </li>
+      <li>属性计算逻辑
+        <ul>
+          <li>mFromX、mToX、mFromY、mToY计算
+            <ul>
+              <li>Float类型scale直接值</li>
+              <li>Faction类型相对值
+                <ul>
+                  <li>相对于自身(%)：百分比转换为float直接值</li>
+                  <li>相对于父亲(%p)：根据父亲size计算出size直接值，然后计算与本身size的百分比，最后转换为float直接值</li>
+                </ul>
+              </li>
+              <li>Dimension类型size直接值：计算与本身size的百分比，然后转换为float直接值</li>
+            </ul>
+          </li>
+          <li>mPivotX、mPivotY计算
+            <ul>
+              <li>ABSOLUTE类型直接值</li>
+              <li>RELATIVE_TO_SELF类型相对值：相对值乘以自身size得到直接值</li>
+              <li>RELATIVE_TO_PARENT类型相对值：相对值乘以父亲size得到直接值</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li>applyTransformation函数实现
+        <ul>
+          <li>sx = mFromX + ((mToX - mFromX) * interpolatedTime)</li>
+          <li>sy = mFromY + ((mToY - mFromY) * interpolatedTime)</li>
+          <li>是否设定缩放中心点：
+            <ul>
+              <li>若mPivotX==0 且 mPivotY==0：transformation.getMatrix().setScale(sx, sy)</li>
+              <li>否则：transformation.getMatrix().setScale(sx, sy, mPivotX, mPivotY)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <h5 id="translateanimation"><em>TranslateAnimation：平移动画</em></h5>
+    <ul>
+      <li>基本属性
+        <ul>
+          <li>mFromXDelta</li>
+          <li>mToXDelta</li>
+          <li>mFromYDelta</li>
+          <li>mToYDelta</li>
+        </ul>
+      </li>
+      <li>属性计算逻辑
+        <ul>
+          <li>同ScaleAnimation中mPivotX、mPivotY的计算逻辑</li>
+        </ul>
+      </li>
+      <li>applyTransformation函数实现
+        <ul>
+          <li>dx = mFromXDelta + ((mToXDelta - mFromXDelta) * interpolatedTime)</li>
+          <li>dy = mFromYDelta + ((mToYDelta - mFromYDelta) * interpolatedTime)</li>
+          <li>transformation.getMatrix().setTranslate(dx, dy)</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <h5 id="rotateanimation"><em>RotateAnimation：旋转动画</em></h5>
+    <ul>
+      <li>基本属性
+        <ul>
+          <li>mFromDegrees</li>
+          <li>mToDegrees</li>
+          <li>mPivotX</li>
+          <li>mPivotY</li>
+        </ul>
+      </li>
+      <li>属性计算逻辑
+        <ul>
+          <li>mFromDegrees、mToDegrees均为角度（°）绝对值</li>
+          <li>mPivotX、mPivotY计算逻辑同ScaleAnimation</li>
+        </ul>
+      </li>
+      <li>applyTransformation函数实现
+        <ul>
+          <li>是否设定缩放中心点：
+            <ul>
+              <li>若mPivotX==0 且 mPivotY==0：transformation.getMatrix().setScale(sx, sy)</li>
+              <li>否则：transformation.getMatrix().setScale(sx, sy, mPivotX, mPivotY)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>透明度、缩放、平移以及旋转是最基本的动画，通过组合这些动画可以实现各种不一样的酷炫的效果，但是怎么才能实现这些动画的组合，这就不得不提到AnimationSet了。</p>
+
+<h4 id="animationset">(4) AnimationSet分析</h4>
+
+<ul>
+  <li>AnimationSet是动画集合，用于组合运行多个动画，仅支持playTogether模式。</li>
+  <li>AnimationSet继承了Animation的字段，但是字段的应用有一些变化：</li>
+  <li>duration, repeatMode, fillBefore, fillAfter：这些属性会传递应用到所有的子Animation</li>
+  <li>repeatCount, fillEnabled：这些属性在AnimationSet中不被应用</li>
+  <li>startOffset, shareInterpolator：这些属性仅用于AnimationSet，不会传递至子Animation</li>
+  <li>4.0以前在xml中设置duration, repeatMode, fillBefore, fillAfter, startOffset不会被应用，但是4.0之后再xml中设定这些属性跟运行时设定效果一致</li>
+  <li>一些值的计算逻辑：
+    <ul>
+      <li>duration：
+        <ul>
+          <li>缺省时，取所有子Animation中最长的duration；</li>
+          <li>已设定时，返回mDuration</li>
+        </ul>
+      </li>
+      <li>hasAlpha、willChangeTransformationMatrix、willChangeBounds：当有子Animation时，所有子Animation的值取“或”</li>
+      <li>startTime：取所有子Animation中最小的startTime</li>
+      <li>子Animation中startOffset处理：
+        <ul>
+          <li>保存子Animation的原始startOffset</li>
+          <li>设置子Animation的startOffset为原始startOffset与AnimationSet的startOffset之和</li>
+          <li>保存的原始startOffset在AnimationSet.clear是用于恢复各子Animation的startOffset</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>applyTransformation函数实现
+    <ul>
+      <li>顺序调用子Animation的applyTransformation，然后利用Transformation.compose组合所有子Animation返回的Transformation作为该AnimationSet当前帧的变换状态</li>
+      <li>started及more值取所有子Animation对应值的“或”</li>
+      <li>ended值取所有子Animation对应值的“与”</li>
+      <li>当started第一次为true时，调用AnimationSet的mListener.onAnimationStart</li>
+      <li>当ended第一次为true（此时所有子Animation均结束）时，调用AnimationSet的mListener.onAnimationEnd</li>
+    </ul>
+  </li>
+</ul>
+
+<p>介绍完了主流动画以及组合动画，是不是Animation就介绍完了？其实不然，里面还漏掉了一个重要角色，那就是计算得到的动画数据是用什么存储的。实际上，Animation的动画函数<code class="highlighter-rouge">getTransformation</code>目的在于生成当前帧的一个Transformation，这个Transformation采用alpha以及Matrix存储了一帧动画的数据，Transformation包含两种模式：</p>
+
+<ul>
+  <li>alpha模式：用于支持透明度动画</li>
+  <li>matrix模式：用于支持缩放、平移以及旋转动画</li>
+</ul>
+
+<p>同时，Transformation还提供了许多两个接口用于组合多个Transformation：</p>
+
+<ul>
+  <li>compose：前结合（alpha相乘、矩阵右乘、边界叠加）</li>
+  <li>postCompose：后结合（alpha相乘、矩阵左乘、边界叠加）</li>
+</ul>
+
+<p>至此，Animation本身算介绍完整了，还差一个可用于从XML中构建动画以及插间器的AnimationUtils，这里就不做具体分析了，有兴趣的同学可以自行研究。但是，到现在为止，我们还没讲明白是：<code class="highlighter-rouge">getTransformation</code>这个函数究竟是在哪里调用的？计算得到的动画数据又是怎么被应用的？慌不要慌，待我娓娓道来，当这些问题揭秘之后，我们就知道为什么Animation这个包要放在android.view下面以及Animation完成之后为什么View本身的属性不会被改变，于是也就知道插间动画（Animation）跟属性动画（Animator）本质上的区别在哪了。</p>
+
+<h3 id="animation-1">4. Animation的调用</h3>
+
+<p>要了解Animation的调用源头，要从Animation的基本使用View.startAnimation开始寻根溯源：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="kd">public</span> <span class="kt">void</span> <span class="nf">startAnimation</span><span class="p">(</span><span class="n">Animation</span> <span class="n">animation</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">animation</span><span class="o">.</span><span class="na">setStartTime</span><span class="o">(</span><span class="n">Animation</span><span class="o">.</span><span class="na">START_ON_FIRST_FRAME</span><span class="o">);</span>
+        <span class="n">setAnimation</span><span class="o">(</span><span class="n">animation</span><span class="o">);</span>
+        <span class="n">invalidateParentCaches</span><span class="o">();</span>
+        <span class="n">invalidate</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>通过invalidate(true)函数会触发View的重新绘制，由于View的绘制流程并不是本文的重点，因此这里仅说明从View.draw是怎么走到对Animation的处理函数的:</p>
+
+<blockquote>
+
+  <p><code class="highlighter-rouge">View.draw(Canvas)</code><br />
+—&gt; <code class="highlighter-rouge">ViewGroup.dispatchDraw(Canvas)</code> <br />
+—&gt; <code class="highlighter-rouge">ViewGroup.drawChild(Canvas, View, long)</code> <br />
+—&gt; <code class="highlighter-rouge">View.draw(Canvas, ViewGroup, long)</code><br />
+—&gt; <code class="highlighter-rouge">View.applyLegacyAnimation(ViewGroup, long,
+            Animation, boolean)</code></p>
+</blockquote>
+
+<p>而<code class="highlighter-rouge">View.applyLegacyAnimation</code>就是Animation大显神通的舞台，其核心代码主要分三个部分：</p>
+
+<ol>
+  <li>初始化Animation（仅初始化一次）
+    <ul>
+      <li>调用<code class="highlighter-rouge">Animation.initialize(width, height, parentWidth, parentHeight)</code>，通过View及ParentView的Size来解析Animation中的相关数据；</li>
+      <li>调用<code class="highlighter-rouge">Animation.initializeInvalidateRegion(left, top, right, bottom)</code>来设定动画的初始区域，并在fillBefore为true时计算Animation动画进度为0.0f的数据</li>
+    </ul>
+  </li>
+  <li>
+    <p>调用<code class="highlighter-rouge">getTransformation</code>根据当前绘制事件生成Animation中对应帧的动画数据</p>
+  </li>
+  <li>根据动画数据设定重绘制区域
+    <ul>
+      <li>若仅为Alpha动画，此时动画区域为View的当前区域，且不会产生变化</li>
+      <li>若包含非Alpha动画，此时动画区域需要调用<code class="highlighter-rouge">Animation.getInvalidateRegion</code>进行计算，该函数会根据上述生成动画数据<code class="highlighter-rouge">Thransformation</code>中的Matrix进行计算，并与之前的动画区域执行unio操作，从而获取动画的完整区域</li>
+      <li>调用<code class="highlighter-rouge">ViewGroup.invalidate(int l, int t, int r, int b)</code>设定绘制区域</li>
+    </ul>
+  </li>
+</ol>
+
+<p>当<code class="highlighter-rouge">View.applyLegacyAnimation</code>调用完成之后，View此次绘制的动画数据就构建完成，之后便回到<code class="highlighter-rouge">View.draw(Canvas, ViewGroup, long)</code>应用动画数据对视图进行绘制刷新，其核心代码如下：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="k">if</span> <span class="o">(</span><span class="n">transformToApply</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">concatMatrix</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">drawingWithRenderNode</span><span class="o">)</span> <span class="o">{</span>
+            		<span class="c1">// 应用动画数据</span>
+                <span class="n">renderNode</span><span class="o">.</span><span class="na">setAnimationMatrix</span><span class="o">(</span><span class="n">transformToApply</span><span class="o">.</span><span class="na">getMatrix</span><span class="o">());</span>
+            <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+                <span class="n">canvas</span><span class="o">.</span><span class="na">translate</span><span class="o">(-</span><span class="n">transX</span><span class="o">,</span> <span class="o">-</span><span class="n">transY</span><span class="o">);</span>
+                <span class="c1">// 应用动画数据</span>
+                <span class="n">canvas</span><span class="o">.</span><span class="na">concat</span><span class="o">(</span><span class="n">transformToApply</span><span class="o">.</span><span class="na">getMatrix</span><span class="o">());</span>
+                <span class="n">canvas</span><span class="o">.</span><span class="na">translate</span><span class="o">(</span><span class="n">transX</span><span class="o">,</span> <span class="n">transY</span><span class="o">);</span>
+            <span class="o">}</span>
+            <span class="n">parent</span><span class="o">.</span><span class="na">mGroupFlags</span> <span class="o">|=</span> <span class="n">ViewGroup</span><span class="o">.</span><span class="na">FLAG_CLEAR_TRANSFORMATION</span><span class="o">;</span>
+        <span class="o">}</span>
+
+        <span class="kt">float</span> <span class="n">transformAlpha</span> <span class="o">=</span> <span class="n">transformToApply</span><span class="o">.</span><span class="na">getAlpha</span><span class="o">();</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">transformAlpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span>
+        	<span class="c1">// 应用动画数据</span>
+            <span class="n">alpha</span> <span class="o">*=</span> <span class="n">transformAlpha</span><span class="o">;</span>
+            <span class="n">parent</span><span class="o">.</span><span class="na">mGroupFlags</span> <span class="o">|=</span> <span class="n">ViewGroup</span><span class="o">.</span><span class="na">FLAG_CLEAR_TRANSFORMATION</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>重点来了，大家看到Animation产生的动画数据实际并不是应用在View本身的，而是应用在RenderNode或者Canvas上的，这就是为什么Animation不会改变View的属性的根本所在。另一方面，我们知道Animation仅在View被绘制的时候才能发挥自己的价值，这也是为什么插间动画被放在Android.view包内，因为它跟View是真心相爱的。
+文章到这，其实差不多可以结束了，但是创作动画过程中总是会被用到的一个神器还没出现，这让我有些不舍，尽管有太多人讲解这一神器，但是我还是毅然决然地决定抄一遍书，一来表示我对这一神器的爱，另一方面也是希望让文章更完整。</p>
+
+<h3 id="interpolator">5. 插间器(Interpolator)</h3>
+
+<p>如果没有插间器，Animation应该按照时间来线性计算每一个时间点的动画帧数据；当时当加入插件器之后，我们计算动画帧数据时就可以更加的富有创造力，我可以随心所欲地计算任一时间点的动画帧数据，可以新加速在减速，也可以先减速在加速，总之一句话，我的地盘我做主。按照剧情的发展，接下来我应该介绍常用插间器了，但是作为一个有态度的程序员，我是不会按常理出牌的，想要了解常用插间器的实现原理，建议阅读<a href="http://cogitolearning.co.uk/?p=1078">Android Animations Tutorial 5: More on Interpolators</a>。</p>
+
+<h3 id="section-4">6. 后记</h3>
+<p>其实很早之前就看过Animation的源码，但是当时因为懒并没有写文章做笔记，这次因为项目需要优化动画，于是又重新撸了一遍，在此撰文为记，以备后用。当然，也希望这篇分享能给大家一些收获，非常感谢你的阅读，如果有浪费到你的时间，也就浪费了，权当看了一章凑字数的小说，233333~~~</p>
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+              
+                <a class="btn btn-default" href="/2016/08/dex%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F%E5%8F%8Adexdiff%E5%8E%9F%E7%90%86" class="previous">上一篇</a>
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/08/Android-Animation%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3">Android Animation运行原理详解</a></li>
+        
+          <li><a href="/2016/08/dex%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F%E5%8F%8Adexdiff%E5%8E%9F%E7%90%86">DexDiff：基于dex文件反编译生成dex增量包</a></li>
+        
+          <li><a href="/2016/07/%E8%8E%B7%E5%8F%96%E9%9D%9ERoot%E6%89%8B%E6%9C%BA%E4%B8%8B%E5%BA%94%E7%94%A8%E7%A7%81%E6%9C%89%E6%95%B0%E6%8D%AE-copy">获取非Root手机下应用私有数据</a></li>
+        
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
+          <li><a href="/2016/04/Okio%E8%AF%A6%E8%A7%A3">Okio详解</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+	<li><a href="https://github.com/SparkInLee/Debugger" target="blank">GitHub: Debugger</a></li>
+	<li><a href="https://github.com/SparkInLee/dexdiff" target="blank">GitHub: DexDiff</a></li>
+	<li><a href="https://github.com/SparkInLee/jbsdiff" target="blank">GitHub: JBsdiff</a></li>
+</ul>
+
+</div>
+
+<div class="sidebar well">
+	<h1>微信</h1>
+	<img src="/images/qr.png" style="width: 320px;height: 320px;" alt="SparkInLee's Blog" />
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-08-android-animation-e8-bf-90-e8-a1-8c-e5-8e-9f-e7-90-86-e8-af-a6-e8-a7-a3';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 SparkInLee's Blog.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-08-android-animation-e8-bf-90-e8-a1-8c-e5-8e-9f-e7-90-86-e8-af-a6-e8-a7-a3';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+
