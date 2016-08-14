@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SparkInLee's Blog</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="静思、勤写、乐享">
+    <link href="/images/favicon.png" rel="shortcut icon">
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <link href="/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="/css/theme.css" rel="stylesheet" type="text/css">
+    <link href="/css/syntax.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                  <span class="sr-only">Toggle Navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/" style="padding:5px;">
+                  <img src="/images/self.png" style="width: 40px;height: 40px;" alt="SparkInLee's Blog" />
+                </a>
+              </div>
+              <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+                <ul class="nav navbar-nav">
+                    <li><a href="/">主页</a></li>
+                    <li><a href="/archive.html">文章列表</a></li>
+                    <li><a href="/about.html">关于我</a></li>
+                    <li class="visible-xs-block"><a href="/links.html">相关链接</a></li>
+                </ul>
+              </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="container container-left">
+    <div class="row">
+        <div class="col-md-9">
+          <div class="article" style="border-right: 1px solid #eee;border-left: 1px solid #eee;">
+            <div class="well">
+                <h1 style="margin-bottom: 20px;"><a href="/2016/08/Android-Animator%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3">Android Animator运行原理详解</a></h1>
+            
+                <p class="author">
+                  <a href="#disqus_thread" data-disqus-identifier="2016-08-android-animator-e8-bf-90-e8-a1-8c-e5-8e-9f-e7-90-86-e8-af-a6-e8-a7-a3">查看评论</a>
+                </p>
+            
+            <div class="post-content">
+            <p><strong>摘要</strong>：本文根据Animator的源码分析其运行原理，包括：属性动画包含哪些基本元素；属性动画的运行流程是怎样的；属性动画是怎么对View起作用的；怎么组合并运行多个属性动画；属性动画的帧率决定者<code class="highlighter-rouge">Choreographer</code>是如何工作的。
+<!-- excerpt split --></p>
+
+<hr />
+
+<p><strong>文章原创，允许转载，转载请注明出处。</strong></p>
+
+<hr />
+
+<h3 id="section">1. 前言</h3>
+<p>上一篇文章《<a href="http://www.jianshu.com/p/fcd9c7e9937e">Android Animation运行原理详解</a>》介绍了插间动画的原理，而Android3.0之后引进了一种动画实现——属性动画，放在以前可能会因为要兼容3.0以前系统而小犹豫下，但现在3.0以上系统已占有率已达97%以上（来自Android Studio统计数据），市场上许多应用甚至已经将4.0作为最低兼容版本了，因此属性动画基本就是标配了，再说就算真的有老古董应用想要兼容3.0以前系统也可以使用开源库<a href="https://github.com/JakeWharton/NineOldAndroids">NineOldAndroids</a>来享受属性动画带来的快感。这种情况下，理解属性动画的运行原理，分析属性动画相对于插间动画而言有哪些优势就比较有意义了，而且属性动画似乎已经慢慢取代插间动画而成为动画的主流实现方式了。本文主要分享我在学习属性动画的过程中的一些收获，包括：属性动画包含哪些基本元素；属性动画的运行流程是怎样的；属性动画是怎么对View起作用的；怎么组合并运行多个属性动画；属性动画的帧率决定者<code class="highlighter-rouge">Choreographer</code>是如何工作的。</p>
+
+<h3 id="section-1">2. 属性动画的基本元素</h3>
+<p>属性动画跟插间动画一样会包含动画相关的属性，如动画时长、延迟时间、插间器等等，为了后面分析动画运行流程时概念更加明确，这里我摘抄了<code class="highlighter-rouge">ValueAnimator</code>源码中的字段，并做了相应的注解，对Animator有过了解的同学可以直接跳过，不熟悉的同学建议先扫一眼，然后重点关注<code class="highlighter-rouge">PropertyValuesHolder</code>这个属性相关的介绍。</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 初始化函数是否被调用</span>
+<span class="kt">boolean</span> <span class="n">mInitialized</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+<span class="c1">// 动画时长</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">mDuration</span> <span class="o">=</span> <span class="o">(</span><span class="kt">long</span><span class="o">)(</span><span class="mi">300</span> <span class="o">*</span> <span class="n">sDurationScale</span><span class="o">);</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">mUnscaledDuration</span> <span class="o">=</span> <span class="mi">300</span><span class="o">;</span>
+
+<span class="c1">// 动画延时</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">mStartDelay</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">mUnscaledStartDelay</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+
+<span class="c1">// 动画重复模式及次数</span>
+<span class="kd">private</span> <span class="kt">int</span> <span class="n">mRepeatCount</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+<span class="kd">private</span> <span class="kt">int</span> <span class="n">mRepeatMode</span> <span class="o">=</span> <span class="n">RESTART</span><span class="o">;</span>
+
+<span class="c1">// 插间器，参看http://cogitolearning.co.uk/?p=1078</span>
+<span class="kd">private</span> <span class="n">TimeInterpolator</span> <span class="n">mInterpolator</span> <span class="o">=</span> <span class="n">sDefaultInterpolator</span><span class="o">;</span>
+
+<span class="c1">// 动画开始运行的时间点</span>
+<span class="kt">long</span> <span class="n">mStartTime</span><span class="o">;</span>	
+<span class="c1">// 是否需要在掉帧的时候调整动画开始时间点</span>
+<span class="kt">boolean</span> <span class="n">mStartTimeCommitted</span><span class="o">;</span>
+
+<span class="c1">// 动画是否反方向运行，当repeatMode=REVERSE是会每个动画周期反转一次</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">mPlayingBackwards</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+<span class="c1">// 当前动画在一个动画周期中所处位置</span>
+<span class="kd">private</span> <span class="kt">float</span> <span class="n">mCurrentFraction</span> <span class="o">=</span> <span class="mi">0</span><span class="n">f</span><span class="o">;</span>
+
+<span class="c1">// 动画是否延时</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">mStartedDelay</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+<span class="c1">// 动画完成延时的时间点</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">mDelayStartTime</span><span class="o">;</span>
+
+<span class="c1">// 动画当前所处的状态：STOPPED, RUNNING, SEEKED</span>
+<span class="kt">int</span> <span class="n">mPlayingState</span> <span class="o">=</span> <span class="n">STOPPED</span><span class="o">;</span>
+
+<span class="c1">// 动画是否被启动</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">mStarted</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+<span class="c1">// 动画是否被执行（以动画第一帧被计算为界）</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">mRunning</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+<span class="c1">// 回调监听器</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">mStartListenersCalled</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span> <span class="c1">// 确保AnimatorListener.onAnimationStart(Animator)仅被调用一次</span>
+<span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">AnimatorListener</span><span class="o">&gt;</span> <span class="n">mListeners</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="c1">// start,end,cancel,repeat回调</span>
+<span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">AnimatorPauseListener</span><span class="o">&gt;</span> <span class="n">mPauseListeners</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="c1">// pause, resume回调</span>
+<span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">AnimatorUpdateListener</span><span class="o">&gt;</span> <span class="n">mUpdateListeners</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span> <span class="c1">// value更新回调</span>
+</code></pre>
+</div>
+
+<p>以上属性都是动画的基本属性以及运行过程的状态记录，跟插间动画差别不大，而属性动画相对于插间动画来件引入了一些新的概念：可以暂停和恢复、可以调整进度，这些概念的引入，让动画的概念更加饱满起来，让动画有了视频播放的概念，而跟这些新概率相关的属性主要包括：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 动画是否被暂停</span>
+<span class="kt">boolean</span> <span class="n">mPaused</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+<span class="c1">// 动画暂停时间点，用于在动画被恢复的时候调整mStartTime以确保动画能优雅地继续运行</span>
+<span class="kd">private</span> <span class="kt">long</span> <span class="n">mPauseTime</span><span class="o">;</span>
+<span class="c1">// 动画是否从暂停中被恢复，用于表明动画可以调整mStartTime了</span>
+<span class="kd">private</span> <span class="kt">boolean</span> <span class="n">mResumed</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+
+<span class="c1">// 动画被设定的进度位置，具体功效见后文对动画流程的分析</span>
+<span class="kt">float</span> <span class="n">mSeekFraction</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+</code></pre>
+</div>
+
+<p>除了上面这些动画属性以外，Animator还包含了一个有别于Animation的属性，那就是<code class="highlighter-rouge">PropertyValuesHolder</code>，<code class="highlighter-rouge">PropertyValuesHolder</code>是用来保存某个属性<code class="highlighter-rouge">property</code>对应的一组值，这些值对应了一个动画周期中的所有关键帧。其实，动画说到底是由动画帧组成的，Animator可以设定并保存整个动画周期中的关键帧，然后根据这些关键帧计算出动画周期中任一时间点对应的动画帧的动画数据，而每一帧的动画数据里都包含了一个时间点属性<code class="highlighter-rouge">fraction</code>以及一个动画值<code class="highlighter-rouge">mValue</code>，从而实现根据当前的时间点计算当前的动画值，然后用这个动画值去更新<code class="highlighter-rouge">property</code>对应的属性，这也是为什么Animator被称为属性动画的原因，因为它的整个动画过程实际上就是不断计算并更新对象的属性：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 保存property及其values的数组</span>
+<span class="n">PropertyValuesHolder</span><span class="o">[]</span> <span class="n">mValues</span><span class="o">;</span>
+ <span class="n">HashMap</span><span class="o">&lt;</span><span class="n">String</span><span class="o">,</span> <span class="n">PropertyValuesHolder</span><span class="o">&gt;</span> <span class="n">mValuesMap</span><span class="o">;</span>
+</code></pre>
+</div>
+
+<p>在这里必须要详细分析下<code class="highlighter-rouge">PropertyValuesHolder</code>，因为这关系到后面对动画流程的理解。注意了，我要出大招了：</p>
+
+<p><a href="/images/PropertyValuesHolder.png" style="display:block;text-align:center;">
+  <img src="/images/PropertyValuesHolder.png" style="max-width:100%;max-height:100%;" />
+</a></p>
+
+<p>上面这张图详细地描述了<code class="highlighter-rouge">PropertyValuesHolder</code>的组成，我知道大家一般是不愿意看这张图的，但是为什么我还要放在这？因为我都画了，不放怎么能显现出我的工作量- -！但是作为一个正义的程序员，我会用语言描述来拯救你们这些小懒虫，<code class="highlighter-rouge">PropertyValuesHolder</code>由<code class="highlighter-rouge">Property</code>及<code class="highlighter-rouge">Keyframes</code>组成，其中<code class="highlighter-rouge">Property</code>用于描述属性的特征：如属性名以及属性类型，并提供set及get方法用于获取及设定给定Target的对应属性值；<code class="highlighter-rouge">Keyframes</code>由一组关键帧<code class="highlighter-rouge">Keyframe</code>组成，每一个关键帧由fraction及value来定量描述，于是<code class="highlighter-rouge">Keyframes</code>可以根据给定的fraction定位到两个关键帧，这两个关键帧的fraction组成的区间包含给定的fraction，然后根据定位到的两个关键帧以及设定插间器及求值器就可以计算出给定fraction对应的value。于是，<code class="highlighter-rouge">PropertyValuesHolder</code>的整个工作流程也就呼之欲出了，首先通过<code class="highlighter-rouge">setObjectValues</code>等函数来初始化关键帧组<code class="highlighter-rouge">mKeyframes</code>，必要的情况下（如<code class="highlighter-rouge">ObjectAnimator</code>）可以通过<code class="highlighter-rouge">setStartValue</code>及<code class="highlighter-rouge">setEndValue</code>来设定第一帧及最末帧的value，以上工作只是完成了<code class="highlighter-rouge">PropertyValuesHolder</code>的初始化，之后就可以由<code class="highlighter-rouge">Animator</code>在绘制动画帧的时候通过fraction来调用<code class="highlighter-rouge">calculateValue</code>计算该fraction对应的value（实际上是由<code class="highlighter-rouge">mKeyframes</code>的<code class="highlighter-rouge">getValue</code>方法做出最终计算），获得对应的value之后，一方面可以通过<code class="highlighter-rouge">getAnimatedValue</code>提供给<code class="highlighter-rouge">Animator</code>使用，另一方面也可以通过<code class="highlighter-rouge">setAnimatedValue</code>方法直接将该值设定到相应Target中去，这样<code class="highlighter-rouge">PropertyValuesHolder</code>的职责也就完成了。有了<code class="highlighter-rouge">PropertyValuesHolder</code>的鼎力支持之后，动画也就可以开始正常的运转起来了，具体的运转流程又是怎样的咧？且听下节讲解。</p>
+
+<h3 id="section-2">3. 属性动画的运行流程</h3>
+<p>通过上一小节的介绍，我想各位看客应该对动画的组成元素有个基本的了解了，接下来就让我们看看这些基本元素组合在一起之后能诞生怎样的奇妙功效，让我们揭开面纱一睹美人芳颜。<br />
+属性动画的运转流程大体可分为三种类型：善始善终型、英年早逝型、命运多舛型，但不管哪种类型首先必须进行以下这些必要的初始化工作：</p>
+
+<ul>
+  <li>通过<code class="highlighter-rouge">setIntValues</code>、<code class="highlighter-rouge">setFloatValues</code>、<code class="highlighter-rouge">setObjectValues</code>或<code class="highlighter-rouge">setValues</code>初始化<code class="highlighter-rouge">PropertyValuesHolder</code>数组</li>
+  <li>设定<code class="highlighter-rouge">mDuration</code>、<code class="highlighter-rouge">mStartDelay</code>、<code class="highlighter-rouge">mRepeatCount</code>、<code class="highlighter-rouge">mRepeatMode</code>、<code class="highlighter-rouge">mInterpolator</code>、各种监听器等动画相关参数</li>
+</ul>
+
+<p>完成动画的初始化工作之后，随着<code class="highlighter-rouge">start</code>的调用，动画正式开始。</p>
+
+<h4 id="section-3">（1）善始善终型动画</h4>
+<p>善始善终型动画描述的是一种无病而终的动画人生，这样的动画一旦<code class="highlighter-rouge">start</code>就沿着既定的路线一直跑到终点，不快不慢、不长不短。<br />
+在<code class="highlighter-rouge">start</code>函数中，首先会尝试获取或创建一个<code class="highlighter-rouge">AnimationHandler</code>，这里要是不解释下<code class="highlighter-rouge">AnimationHandler</code>可能就忽悠不下去了，因此我们来看看这是个什么鬼。</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="kd">protected</span> <span class="kd">static</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">AnimationHandler</span><span class="o">&gt;</span> <span class="n">sAnimationHandler</span> <span class="o">=</span>
+            <span class="k">new</span> <span class="n">ThreadLocal</span><span class="o">&lt;</span><span class="n">AnimationHandler</span><span class="o">&gt;();</span>
+</code></pre>
+</div>
+<p>根据官方解释以及源码分析可以发现：这家伙就是一个定时任务处理器，根据<code class="highlighter-rouge">Choreographer</code>的脉冲周期性地完成指定的任务，由于它是一个线程安全的静态变量，因此运行在同一线程中的所有Animator共用一个定时任务处理器，这样的好处在于：一方面可以保证Animator中计算某一时刻动画帧是在同一线程中运行的，避免了多线程同步的问题；另一方面，该线程下所有动画共用一个处理器，可以让这些动画有效地进行同步，从而让动画效果更加优雅。至于<code class="highlighter-rouge">AnimationHandler</code>具体用来做哪些任务，我们看看动画怎么蹦跶的就明白了。<br />
+成功获取到<code class="highlighter-rouge">AnimationHandler</code>之后，会做如下处理：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">mPlayingState</span> <span class="o">=</span> <span class="n">STOPPED</span><span class="o">;</span>	<span class="c1">//  当前状态为STOPPED</span>
+<span class="n">mStarted</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>	<span class="c1">// 动画启动标志位置位</span>
+<span class="n">mStartedDelay</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>	<span class="c1">// 动画未完成延时标志位复位</span>
+<span class="n">mPaused</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>	<span class="c1">// 动画暂停标志位复位</span>
+</code></pre>
+</div>
+
+<p>若动画未设定<code class="highlighter-rouge">mStartDelay</code>，还会如下额外操作：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">mStartTime</span> <span class="o">=</span> <span class="n">currentTime</span><span class="o">;</span>	<span class="c1">// 动画起始时间为当前时间</span>
+<span class="n">mStartTimeCommitted</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>	<span class="c1">// 动画起始时间不可调整</span>
+<span class="n">animateValue</span><span class="o">(</span><span class="n">fraction</span><span class="o">);</span>	<span class="c1">// 计算第一帧动画值</span>
+<span class="n">mRunning</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>	<span class="c1">// 动画运行标志位置位</span>
+<span class="n">notifyStartListeners</span><span class="o">();</span>	<span class="c1">// 回调AnimatorListener.onAnimationStart</span>
+</code></pre>
+</div>
+<p>完成所有启动操作之后，会将该动画加入<code class="highlighter-rouge">AnimationHandler.mPendingAnimations</code>这个等待列表，接着就正式开启<code class="highlighter-rouge">AnimationHandler</code>的定时任务：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">animationHandler</span><span class="o">.</span><span class="na">start</span><span class="o">()</span>
+<span class="o">-&gt;</span> <span class="n">animationHandler</span><span class="o">.</span><span class="na">scheduleAnimation</span><span class="o">()</span>
+<span class="o">-&gt;</span> <span class="n">mChoreographer</span><span class="o">.</span><span class="na">postCallback</span><span class="o">(</span><span class="n">Choreographer</span><span class="o">.</span><span class="na">CALLBACK_ANIMATION</span><span class="o">,</span> <span class="n">mAnimate</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+<span class="o">-&gt;</span> <span class="n">animationHandler</span><span class="o">.</span><span class="na">doAnimationFrame</span><span class="o">(</span><span class="n">mChoreographer</span><span class="o">.</span><span class="na">getFrameTime</span><span class="o">());</span>
+</code></pre>
+</div>
+<p>BOSS来袭!!!<code class="highlighter-rouge">AnimationHandler.doAnimationFrame</code>就是动画的Studio，负责动画生命周期的处理，用下面这个流程图来简单描述：</p>
+
+<p><a href="/images/AnimationHandler.png" style="display:block;text-align:center;">
+  <img src="/images/AnimationHandler.png" style="max-width:100%;max-height:100%;" />
+</a></p>
+
+<p>注意，这个流程图跟普通的流程图意义稍微有点区别，那就是整个流程不一定是在一帧内同时完成的，一个动画可能需要跨越多帧才能从START走到END，比如：动画可能延迟了3帧才正式开始，然后做了10帧动画才最后结束。流程清楚了之后，我们来分析下流程中涉及的函数具体的逻辑是怎样的，但分析之前有必要先说明下<code class="highlighter-rouge">AnimationHandler</code>中的保存动画的几个列表：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 保存start被调用且尚未到达第一帧的动画</span>
+<span class="kd">protected</span> <span class="kd">final</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;</span> <span class="n">mPendingAnimations</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;();</span>
+
+<span class="c1">// 保存第一帧已到达且mStartDelay不等于0的动画，等待调用Animator.delayedAnimationFrame</span>
+<span class="kd">protected</span> <span class="kd">final</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;</span> <span class="n">mDelayedAnims</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;();</span>
+
+<span class="c1">// 保存延时已完成的动画，等待调用Animator.startAnimation</span>
+<span class="kd">private</span> <span class="kd">final</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;</span> <span class="n">mReadyAnims</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;();</span>
+
+<span class="c1">// 保存正在运行的动画，该列表中动画mRunning为true，等待调用Animator.doAnimationFrame</span>
+<span class="kd">protected</span> <span class="kd">final</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;</span> <span class="n">mAnimations</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;();</span>
+
+<span class="c1">// 保存已完成的动画，等待调用Animator.endAnimation</span>
+<span class="kd">private</span> <span class="kd">final</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;</span> <span class="n">mEndingAnims</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">ValueAnimator</span><span class="o">&gt;();</span>
+</code></pre>
+</div>
+<p>了解了这几个列表之后，我们就可以描述<code class="highlighter-rouge">AnimationHandler.doAnimationFrame</code>做了啥了：</p>
+
+<ul>
+  <li>若<code class="highlighter-rouge">mPendingAnimations</code>不为空，则遍历其内所有Animator做如下处理：
+    <ul>
+      <li><code class="highlighter-rouge">mStartDelay==0</code>的Animator，调用<code class="highlighter-rouge">Animator.startAnimation</code>，该函数处理如下：
+        <ul>
+          <li>调用<code class="highlighter-rouge">Animator.initAnimation</code>，初始化所有<code class="highlighter-rouge">PropertyValuesHolder</code></li>
+          <li>将该Animator放入<code class="highlighter-rouge">AnimationHandler.mAnimations</code></li>
+          <li>调用<code class="highlighter-rouge">AnimatorListener.onAnimationStart</code></li>
+        </ul>
+      </li>
+      <li><code class="highlighter-rouge">mStartDelay==0</code>的Animator，放入<code class="highlighter-rouge">AnimationHandler.mDelayedAnims</code></li>
+    </ul>
+  </li>
+  <li>若<code class="highlighter-rouge">mDelayedAnims</code>不为空，则遍历其内所有Animator做如下处理：
+    <ul>
+      <li>调用<code class="highlighter-rouge">Animator.delayedAnimationFrame</code>，判断该动画延时是否完成，若延时完成：
+        <ul>
+          <li><code class="highlighter-rouge">mStartTime = mDelayStartTime + mStartDelay</code>，设定动画开始时间</li>
+          <li><code class="highlighter-rouge">mStartTimeCommitted = true</code>，禁止调整动画开始时间</li>
+          <li><code class="highlighter-rouge">mPlayingState = RUNNING</code>，设置动画运行状态为RUNNING</li>
+          <li>将该Animator放入<code class="highlighter-rouge">AnimationHandler.mReadyAnims</code></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>若<code class="highlighter-rouge">mReadyAnims</code>不为空，则遍历其内所有Animator做如下处理：
+    <ul>
+      <li>调用<code class="highlighter-rouge">Animator.startAnimation</code></li>
+      <li>设置<code class="highlighter-rouge">Animator.mRunning = true</code></li>
+    </ul>
+  </li>
+  <li>若<code class="highlighter-rouge">mAnimations</code>不为空，则遍历其内所有Animator做如下处理：
+    <ul>
+      <li>调用<code class="highlighter-rouge">Animator.doAnimationFrame</code>，这个函数是动画的关键处理函数：
+        <ul>
+          <li>若<code class="highlighter-rouge">mPlayingState == STOPPED</code>，则初始化<code class="highlighter-rouge">mStartTime</code>为该动画帧时间</li>
+          <li>调用<code class="highlighter-rouge">animationFrame(long currentTime)</code>，做如下处理：</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>		<span class="kt">boolean</span> <span class="nf">animationFrame</span><span class="p">(</span><span class="kt">long</span> <span class="n">currentTime</span><span class="o">)</span> <span class="o">{</span>
+	        <span class="kt">boolean</span> <span class="n">done</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+	        <span class="k">switch</span> <span class="o">(</span><span class="n">mPlayingState</span><span class="o">)</span> <span class="o">{</span>
+	        <span class="k">case</span> <span class="nl">RUNNING:</span>
+	        <span class="k">case</span> <span class="nl">SEEKED:</span>
+	        	<span class="c1">// 计算当前动画帧相对于上一帧动画而言包含的动画周期数</span>
+	            <span class="kt">float</span> <span class="n">fraction</span> <span class="o">=</span> <span class="n">mDuration</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">?</span> <span class="o">(</span><span class="kt">float</span><span class="o">)(</span><span class="n">currentTime</span> <span class="o">-</span> <span class="n">mStartTime</span><span class="o">)</span> <span class="o">/</span> <span class="n">mDuration</span> <span class="o">:</span> <span class="mi">1</span><span class="n">f</span><span class="o">;</span>
+	            <span class="k">if</span> <span class="o">(</span><span class="n">mDuration</span> <span class="o">==</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="n">mRepeatCount</span> <span class="o">!=</span> <span class="n">INFINITE</span><span class="o">)</span> <span class="o">{</span>
+	                <span class="c1">// 若动画周期为0，则可以直接结束动画</span>
+	                <span class="n">mCurrentIteration</span> <span class="o">=</span> <span class="n">mRepeatCount</span><span class="o">;</span>
+	                <span class="k">if</span> <span class="o">(!</span><span class="n">mReversing</span><span class="o">)</span> <span class="o">{</span>
+	                    <span class="n">mPlayingBackwards</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+	                <span class="o">}</span>
+	            <span class="o">}</span>
+	            <span class="k">if</span> <span class="o">(</span><span class="n">fraction</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="n">f</span><span class="o">)</span> <span class="o">{</span>
+	            	<span class="c1">// 动画周期数大于1的情况下，需对动画进行repeat或者结束动画</span>
+	                <span class="k">if</span> <span class="o">(</span><span class="n">mCurrentIteration</span> <span class="o">&lt;</span> <span class="n">mRepeatCount</span> <span class="o">||</span> <span class="n">mRepeatCount</span> <span class="o">==</span> <span class="n">INFINITE</span><span class="o">)</span> <span class="o">{</span>
+	                    <span class="c1">// repeat动画</span>
+	                    <span class="k">if</span> <span class="o">(</span><span class="n">mListeners</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+	                        <span class="kt">int</span> <span class="n">numListeners</span> <span class="o">=</span> <span class="n">mListeners</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+	                        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numListeners</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+	                        	<span class="c1">// 调用AnimationListener.onAnimationRepeat</span>
+	                            <span class="n">mListeners</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">onAnimationRepeat</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+	                        <span class="o">}</span>
+	                    <span class="o">}</span>
+	                    <span class="k">if</span> <span class="o">(</span><span class="n">mRepeatMode</span> <span class="o">==</span> <span class="n">REVERSE</span><span class="o">)</span> <span class="o">{</span>
+	                        <span class="n">mPlayingBackwards</span> <span class="o">=</span> <span class="o">!</span><span class="n">mPlayingBackwards</span><span class="o">;</span>
+	                    <span class="o">}</span>
+	                    <span class="c1">// 累加动画repeat次数</span>
+	                    <span class="n">mCurrentIteration</span> <span class="o">+=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">fraction</span><span class="o">;</span>
+	                    <span class="c1">// 调整fraction至[0.0f,1.0f)</span>
+	                    <span class="n">fraction</span> <span class="o">=</span> <span class="n">fraction</span> <span class="o">%</span> <span class="mi">1</span><span class="n">f</span><span class="o">;</span>
+	                    <span class="c1">// 调整动画开始时间</span>
+	                    <span class="n">mStartTime</span> <span class="o">+=</span> <span class="n">mDuration</span><span class="o">;</span>
+	                <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+	                	<span class="c1">// 结束动画</span>
+	                    <span class="n">done</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+	                    <span class="n">fraction</span> <span class="o">=</span> <span class="n">Math</span><span class="o">.</span><span class="na">min</span><span class="o">(</span><span class="n">fraction</span><span class="o">,</span> <span class="mf">1.0f</span><span class="o">);</span>
+	                <span class="o">}</span>
+	            <span class="o">}</span>
+	            <span class="k">if</span> <span class="o">(</span><span class="n">mPlayingBackwards</span><span class="o">)</span> <span class="o">{</span>
+	                <span class="n">fraction</span> <span class="o">=</span> <span class="mi">1</span><span class="n">f</span> <span class="o">-</span> <span class="n">fraction</span><span class="o">;</span>
+	            <span class="o">}</span>
+	            <span class="c1">// 计算当前动画帧的动画数据</span>
+	            <span class="n">animateValue</span><span class="o">(</span><span class="n">fraction</span><span class="o">);</span>
+	            <span class="k">break</span><span class="o">;</span>
+	        <span class="o">}</span>
+	
+	        <span class="k">return</span> <span class="n">done</span><span class="o">;</span>
+	    <span class="o">}</span>
+</code></pre>
+</div>
+<ul>
+  <li>
+    <ul>
+      <li>
+        <ul>
+          <li><code class="highlighter-rouge">animateValue(fraction)</code>函数如下：</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>		<span class="kt">void</span> <span class="nf">animateValue</span><span class="p">(</span><span class="kt">float</span> <span class="n">fraction</span><span class="o">)</span> <span class="o">{</span>
+	        <span class="n">fraction</span> <span class="o">=</span> <span class="n">mInterpolator</span><span class="o">.</span><span class="na">getInterpolation</span><span class="o">(</span><span class="n">fraction</span><span class="o">);</span>
+	        <span class="n">mCurrentFraction</span> <span class="o">=</span> <span class="n">fraction</span><span class="o">;</span>
+	        <span class="kt">int</span> <span class="n">numValues</span> <span class="o">=</span> <span class="n">mValues</span><span class="o">.</span><span class="na">length</span><span class="o">;</span>
+	        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numValues</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+	        	<span class="c1">// 通过PropertyValuesHolder计算当前动画帧的动画值</span>
+	            <span class="n">mValues</span><span class="o">[</span><span class="n">i</span><span class="o">].</span><span class="na">calculateValue</span><span class="o">(</span><span class="n">fraction</span><span class="o">);</span>
+	        <span class="o">}</span>
+	        <span class="k">if</span> <span class="o">(</span><span class="n">mUpdateListeners</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+	            <span class="kt">int</span> <span class="n">numListeners</span> <span class="o">=</span> <span class="n">mUpdateListeners</span><span class="o">.</span><span class="na">size</span><span class="o">();</span>
+	            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">numListeners</span><span class="o">;</span> <span class="o">++</span><span class="n">i</span><span class="o">)</span> <span class="o">{</span>
+	            	<span class="c1">// 调用AnimatorUpdateListener.onAnimationUpdate，</span>
+	            	<span class="c1">// 在回调中可以通过Animator.getAnimatedValue()获取当前动画帧的数据进行最终的动画处理（如调整Target相应的属性值）</span>
+	                <span class="n">mUpdateListeners</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">onAnimationUpdate</span><span class="o">(</span><span class="k">this</span><span class="o">);</span>
+	            <span class="o">}</span>
+	        <span class="o">}</span>
+	    <span class="o">}</span>
+</code></pre>
+</div>
+<ul>
+  <li>若<code class="highlighter-rouge">mEndingAnims</code>不为空，则遍历其内所有Animator做如下处理：
+    <ul>
+      <li>调用<code class="highlighter-rouge">Animator.endAnimation</code>，该函数主要做扫尾工作：
+        <ul>
+          <li>把该动画从<code class="highlighter-rouge">AnimationHandler</code>的所有列表中清除</li>
+          <li>若未调用过<code class="highlighter-rouge">AnimatorListener.onAnimationStart</code>，则调用</li>
+          <li>调用<code class="highlighter-rouge">AnimatorListener.onAnimationEnd</code></li>
+          <li>复位动画所有状态：如<code class="highlighter-rouge">mPlayingState = STOPPED</code>、<code class="highlighter-rouge">mRunning=false</code>、<code class="highlighter-rouge">mStarted = false</code>等等</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>若<code class="highlighter-rouge">mAnimations</code>或<code class="highlighter-rouge">mDelayedAnims</code>不为空，则对下一帧进行定时。</li>
+</ul>
+
+<p>通过上面这个描述应该能比较清楚的理解动画的整个流程了，但是这里其实我有一个疑问尚未解惑：在<code class="highlighter-rouge">animationFrame(long currentTime)</code>计算得到<code class="highlighter-rouge">fraction</code>后，当<code class="highlighter-rouge">fraction&gt;=1.0f</code>时会对迭代次数以及动画开始时间进行调整，代码如下：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// 计算fraction</span>
+<span class="n">fraction</span> <span class="o">=</span> <span class="n">mDuration</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">?</span> <span class="o">(</span><span class="kt">float</span><span class="o">)(</span><span class="n">currentTime</span> <span class="o">-</span> <span class="n">mStartTime</span><span class="o">)</span> <span class="o">/</span> <span class="n">mDuration</span> <span class="o">:</span> <span class="mi">1</span><span class="n">f</span><span class="o">;</span>
+
+<span class="c1">// 调整迭代次数以及动画开始时间</span>
+<span class="n">mCurrentIteration</span> <span class="o">+=</span> <span class="o">(</span><span class="kt">int</span><span class="o">)</span> <span class="n">fraction</span><span class="o">;</span>
+<span class="n">fraction</span> <span class="o">=</span> <span class="n">fraction</span> <span class="o">%</span> <span class="mi">1</span><span class="n">f</span><span class="o">;</span>
+<span class="n">mStartTime</span> <span class="o">+=</span> <span class="n">mDuration</span><span class="o">;</span>
+</code></pre>
+</div>
+<p><code class="highlighter-rouge">fraction</code>的计算及调整、<code class="highlighter-rouge">mCurrentIteration</code>的累积并不难理解，但是对<code class="highlighter-rouge">mStartTime</code>的调整就有点诡异了：无论当前跨越多少个动画周期，动画的起始时间只向前调整一个周期，而我查了发现也没有其他地方会在下一帧动画运算前对<code class="highlighter-rouge">mStartTime</code>再做调整；那么在下一帧动画中计算<code class="highlighter-rouge">fraction</code>时，若上一帧动画跨越的动画周期数大于等于2，则这一次计算得到的<code class="highlighter-rouge">fraction</code>会比正常跨越周期数多，这意味着动画实际的运行时长会比理论上的时长短，当然这仅仅发生在当<code class="highlighter-rouge">mDuration &lt; 0.5 * frameInterval</code>时，其中frameInterval为两帧动画的间隔时长。尽管对于通常仅为16ms的<code class="highlighter-rouge">frameInterval</code>来说，这种情形应该算是小概率事件，但是Android为何要如此处理，我想应该是有一个比较合理的理由，只是我目前尚未理解，希望了解缘由的小伙伴能指点一二。</p>
+
+<h4 id="section-4">（2）英年早逝型动画</h4>
+<p>不是每一个动画都能正常走完自己的动画人生，有些动画可能需要在必要的时候为完成某个绚烂的效果而英勇牺牲。这样的情况通常有两种：<code class="highlighter-rouge">cancel</code>和<code class="highlighter-rouge">end</code>。接下我们就一次分析下这两种情形：<br />
+<strong>1) Animator.cancel</strong><br />
+<code class="highlighter-rouge">cancel</code>只会处理那些正在运行或者等待开始运行的动画，具体的处理逻辑是这样的：</p>
+
+<ul>
+  <li>若未调用过<code class="highlighter-rouge">AnimatorListener.onAnimationStart</code>，则调用</li>
+  <li>调用<code class="highlighter-rouge">AnimatorListener.onAnimationCancel</code></li>
+  <li>调用<code class="highlighter-rouge">Animator.endAnimation</code>：
+    <ul>
+      <li>把该动画从<code class="highlighter-rouge">AnimationHandler</code>的所有列表中清除</li>
+      <li>调用<code class="highlighter-rouge">AnimatorListener.onAnimationEnd</code></li>
+      <li>复位动画所有状态：如<code class="highlighter-rouge">mPlayingState = STOPPED</code>、<code class="highlighter-rouge">mRunning=false</code>、<code class="highlighter-rouge">mStarted = false</code>等等</li>
+    </ul>
+  </li>
+</ul>
+
+<p>从上面的逻辑不难发现，<code class="highlighter-rouge">cancel</code>对回调的处理是比较完整的，但是<code class="highlighter-rouge">cancel</code>被调用之后，动画的动画值会停留在当前帧而不会继续进行计算。</p>
+
+<p><strong>2) Animator.end</strong><br />
+<code class="highlighter-rouge">end</code>相对于<code class="highlighter-rouge">cancel</code>来说有两个区别：一个是会处理所有动画；另一个是会计算最末一帧动画值。其具体的处理逻辑如下所示：</p>
+
+<ul>
+  <li>若动画尚未开始：调用<code class="highlighter-rouge">Animatior.startAnimation</code>让动画处于正常运行状态</li>
+  <li>计算最后一帧动画的动画值：<code class="highlighter-rouge">animateValue(mPlayingBackwards ? 0f : 1f)</code></li>
+  <li>结束动画：调用<code class="highlighter-rouge">endAnimation</code></li>
+</ul>
+
+<p>这两种处理都会导致动画的非正常结束，需要注意的是<code class="highlighter-rouge">cancel</code>会保留当前的动画值，而<code class="highlighter-rouge">end</code>会计算最末帧的动画值。</p>
+
+<h4 id="section-5">（3）命运多舛型动画</h4>
+<p>之前提到过，属性动画相对于插间动画而言更多的体现出了一种播放视频的感觉：可以暂停和恢复、可以调整进度，这样的动画人生是走走停停的，有时候一不小心还会倒退，过得并不那么一帆风顺，是多舛的命运。我们来一一分析一下：<br />
+<strong>1) pause</strong><br />
+当<code class="highlighter-rouge">pause</code>被调用的时候，仅在动画已开始（<code class="highlighter-rouge">mStarted==true</code>）且当前为非暂停状态时才进行以下处理：</p>
+
+<ul>
+  <li>置位：<code class="highlighter-rouge">mPaused = true</code></li>
+  <li>调用<code class="highlighter-rouge">AnimatorPauseListener.onAnimationPause</code></li>
+  <li>复位<code class="highlighter-rouge">mResumed = false</code></li>
+  <li>清空暂停时间：<code class="highlighter-rouge">mPauseTime = -1</code></li>
+</ul>
+
+<p>做完这些处理之后，就静静地等风来(等下一帧动画的到来)，当风来了之后，<code class="highlighter-rouge">delayedAnimationFrame</code>或<code class="highlighter-rouge">doAnimationFrame</code>被调用，此时若仍然处于暂停状态，就会做如下截击：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="k">if</span> <span class="o">(</span><span class="n">mPaused</span><span class="o">)</span> <span class="o">{</span>
+	<span class="k">if</span> <span class="o">(</span><span class="n">mPauseTime</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+		<span class="n">mPauseTime</span> <span class="o">=</span> <span class="n">frameTime</span><span class="o">;</span>
+	<span class="o">}</span>
+	<span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+<p>这样就阻止了动画的正常运行，并记录下来动画暂停的时间，确保恢复之后能让动画调整到暂停之前的动画点正常运行，具体怎么起作用就要看resume这小子的了。</p>
+
+<p><strong>2) resume</strong><br />
+当<code class="highlighter-rouge">resume</code>被调用的时候，仅当当前是暂停状态时，会做如下处理：</p>
+
+<ul>
+  <li>置位：<code class="highlighter-rouge">mResumed = true</code></li>
+  <li>复位：<code class="highlighter-rouge">mPaused = false</code></li>
+  <li>调用<code class="highlighter-rouge">AnimatorPauseListener.onAnimationResume</code>
+当风再次来临，<code class="highlighter-rouge">delayedAnimationFrame</code>或<code class="highlighter-rouge">doAnimationFrame</code>被调用，此时若处于恢复状态（<code class="highlighter-rouge">mResume==true</code>），就会做如下补偿处理：</li>
+</ul>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="c1">// delayedAnimationFrame的处理</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">mResumed</span><span class="o">)</span> <span class="o">{</span>
+	<span class="n">mResumed</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+	<span class="k">if</span> <span class="o">(</span><span class="n">mPauseTime</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+		<span class="n">mDelayStartTime</span> <span class="o">+=</span> <span class="o">(</span><span class="n">currentTime</span> <span class="o">-</span> <span class="n">mPauseTime</span><span class="o">);</span>
+	<span class="o">}</span>
+<span class="o">}</span>
+
+<span class="c1">// doAnimationFrame的处理</span>
+<span class="k">if</span> <span class="o">(</span><span class="n">mResumed</span><span class="o">)</span> <span class="o">{</span>
+	<span class="n">mResumed</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+	<span class="k">if</span> <span class="o">(</span><span class="n">mPauseTime</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+		<span class="n">mStartTime</span> <span class="o">+=</span> <span class="o">(</span><span class="n">frameTime</span> <span class="o">-</span> <span class="n">mPauseTime</span><span class="o">);</span>
+		<span class="n">mStartTimeCommitted</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+	<span class="o">}</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+<p>这样就让暂停的时间从动画的运行过程中消除，就好像从来没暂停过一样，不带走一片云彩。</p>
+
+<p><strong>3) seek</strong><br />
+我想每个人看电影的时候，或多或少会有这样的经历：看到一个特别唯美或者特别感动的画面，总忍不住想N次回放；又或看到一个无聊或烂俗的桥段，总吐槽着直接跳过。而对动画进行<code class="highlighter-rouge">seek</code>就类似于你拖动电影的进度条，这样可以让动画从动画过程中的任意一个时刻开始运行，<code class="highlighter-rouge">seek</code>是通过<code class="highlighter-rouge">setCurrentPlayTime(long playTime)</code>或者<code class="highlighter-rouge">setCurrentFraction(float fraction)</code>来实现的，实际上最终的逻辑都在<code class="highlighter-rouge">setCurrentFraction</code>里面，这家伙主要干了下面这几件事：</p>
+
+<ul>
+  <li>根据fraction计算并更新<code class="highlighter-rouge">mPlayingBackwards</code>、<code class="highlighter-rouge">mCurrentIteration</code>、<code class="highlighter-rouge">mStartTime</code>等动画关键元素</li>
+  <li>调用<code class="highlighter-rouge">animateValue(fraction)</code>计算该fraction对应的动画值</li>
+  <li>若动画为非运行状态（mPlayingState != RUNNING），则设定<code class="highlighter-rouge">mPlayingState = SEEKED</code></li>
+</ul>
+
+<p>做完这些事，动画的运行状态就被强行调整了，当下一帧动画来临时，则会从强行设定的这个动画时间点继续按正常的动画流程继续运行下去，然而，在这里有一个不可忽视的小细节，那就是当用<code class="highlighter-rouge">seek</code>向前调整的时候会导致<code class="highlighter-rouge">mStartTime</code>先于<code class="highlighter-rouge">frameTime</code>，这样假设还是用mStartTime去调用<code class="highlighter-rouge">animationFrame</code>就会导致<code class="highlighter-rouge">animationFrame</code>中计算得到的fraction为负值，因此细心的程序员们在调用<code class="highlighter-rouge">animationFrame</code>之前做了这样的处理：<code class="highlighter-rouge">Math.max(frameTime, mStartTime)</code>，这样整个世界就清静了，永远不会出现负值。</p>
+
+<p>到这为止，动画的三大运转流程就讲完了，其中有些个处理地比较漂亮的细节可能由于篇幅的问题这里并未提及，希望有心的小伙伴可以再去看看源码，我想会有不少的收获的。</p>
+
+<h3 id="view">4. 属性动画与View的结合</h3>
+<p>前面长篇大论了半天，根本没有具体讲到属性动画是怎么在View上起作用的，但其实细致看下来的小伙伴应该很容易推测出怎么用属性动画去实现View的变换：那就是根据计算出来的动画值去修改View的属性，如alpha、x、y、scaleX、scaleY、translationX、translationY等等，这样当View重绘时就会产生作用，随着View连续不断地被重绘，你的眼中就会产生绚烂多彩的动画了。这就说完了，是不是感觉这一节也太精简了，相对于前一节来讲简直让人难以接受。不要慌，我这么滥情的人是舍不得你们难过的，所以我要把<code class="highlighter-rouge">ObjectAnimator</code>这个最常用的家伙祭出来拯救你们受伤的小心脏。<br />
+<code class="highlighter-rouge">ObjectAnimator</code>是可以在动画帧计算完成之后直接对<code class="highlighter-rouge">Target</code>属性进行修改的属性动画类型，相对于<code class="highlighter-rouge">ValueAnimator</code>来说更加省心省力，为了造福广大Androider，<code class="highlighter-rouge">ObjectAnimator</code>默默做了不少工作：</p>
+
+<ul>
+  <li>提供<code class="highlighter-rouge">setTarget</code>接口，用于设定动画过程中属性修改的主体，值得注意的是，若在动画已启动的情况下修改Taget会导致当前动画被<code class="highlighter-rouge">cancel</code>，然后等待下一次被<code class="highlighter-rouge">start</code></li>
+  <li><code class="highlighter-rouge">initAnimation</code>会通过调用所有<code class="highlighter-rouge">PropertyValuesHolder</code>的<code class="highlighter-rouge">setupSetterAndGetter</code>方法实现对<code class="highlighter-rouge">Property</code>的set及get方法的初始化，以方便后续对<code class="highlighter-rouge">Target</code>对应属性值的修改</li>
+  <li>通过<code class="highlighter-rouge">setupStartValue</code>及<code class="highlighter-rouge">setupEndValues</code>对各<code class="highlighter-rouge">PropertyValuesHolder</code>种的首末帧数据的动画值进行初始化</li>
+  <li>新增一个<code class="highlighter-rouge">mAutoCancel</code>属性，当<code class="highlighter-rouge">mAutoCancel==true</code>时，在<code class="highlighter-rouge">start</code>的过程中会清除<code class="highlighter-rouge">AnimationHandler</code>中对同一<code class="highlighter-rouge">Target</code>及该<code class="highlighter-rouge">Target</code>同一属性进行处理的其他动画</li>
+  <li>在动画的整个过程中，若发现<code class="highlighter-rouge">Target</code>不再有效（动画这种保存的是<code class="highlighter-rouge">Target</code>的弱引用），则<code class="highlighter-rouge">cancel</code>该动画</li>
+  <li>最后，在<code class="highlighter-rouge">animationValue</code>函数中，调用<code class="highlighter-rouge">PropertyValuesHolder.setAnimatedValue</code>对<code class="highlighter-rouge">Target</code>的属性进行修改。</li>
+</ul>
+
+<p>以上，就是<code class="highlighter-rouge">ObjectAnimator</code>背着<code class="highlighter-rouge">ValueAnimator</code>额外做的各种“勾当”，顺带再补充个小细节，在Animator中保存<code class="highlighter-rouge">PropertyValuesHolder</code>的是一个数组，而在函数<code class="highlighter-rouge">animationValue</code>中会遍历处理所有的<code class="highlighter-rouge">PropertyValuesHolder</code>，因此一个动画实现多个属性的同时修改是一件非常容易的事。虽然知道了怎么实现一个动画中修改多个属性，但是怎么实现多个动画的组合运行还尚未可知，我们在下一节里揭秘所有内幕。</p>
+
+<h3 id="section-6">5. 属性动画的组合运行</h3>
+<p>举个例子来说明组合运行多个属性动画的意思：我想在平移一个View的同时改变这个View的透明度，平移完成之后我需要放大整个View。看过《<a href="http://www.jianshu.com/p/fcd9c7e9937e">Android Animation运行原理详解</a>》这篇文章的同学应该知道插间动画是可以实现组合运行多个动画的，但是其实现上只支持“在某个动画的同时做另外一个动画”这种“playTogether”的模式。然后到了属性动画，我们会惊喜的发现组合动画<code class="highlighter-rouge">AnimatorSet</code>除了可以实现“playTogether”模式（下文中“with”模式与此同义）之外，还支持“before”及“after”模式，这家伙简直是吃了窜天猴了——想上天啊，但是不得不说，我喜欢23333~~<br />
+为了支持这些组合模式，<code class="highlighter-rouge">AnimatorSet</code>下了血本，引入了<code class="highlighter-rouge">Dependency</code>以及<code class="highlighter-rouge">Node</code>这两个数据结构，其中<code class="highlighter-rouge">Dependency</code>表示一条依赖规则：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Dependency</span> <span class="o">{</span>
+		<span class="c1">// 规则类型</span>
+	    <span class="kd">public</span> <span class="kt">int</span> <span class="n">rule</span><span class="o">;</span>
+	    <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">WITH</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+	    <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">AFTER</span> <span class="o">=</span> <span class="mi">1</span><span class="o">;</span>
+	    
+	    <span class="c1">// 规则绑定的主体</span>
+	    <span class="kd">public</span> <span class="n">Node</span> <span class="n">node</span><span class="o">;</span>
+	<span class="o">}</span>
+</code></pre>
+</div>
+<p>而<code class="highlighter-rouge">Node</code>用于在<code class="highlighter-rouge">AnimatorSet</code>表征其包含的<code class="highlighter-rouge">Animator</code>，其数据结构如下：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="kd">private</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Node</span> <span class="kd">implements</span> <span class="n">Cloneable</span> <span class="o">{</span>
+		<span class="c1">// 对应的动画</span>
+        <span class="kd">public</span> <span class="n">Animator</span> <span class="n">animation</span><span class="o">;</span>
+        
+        <span class="c1">//  该Node包含的规则列表</span>
+        <span class="kd">public</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Dependency</span><span class="o">&gt;</span> <span class="n">dependencies</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        <span class="c1">// dependencies的副本，应用在动画运行过程，避免损坏原始数据</span>
+        <span class="kd">public</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Dependency</span><span class="o">&gt;</span> <span class="n">tmpDependencies</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        
+        <span class="c1">// 该节点依赖的节点</span>
+        <span class="kd">public</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">nodeDependencies</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        
+        <span class="c1">// 依赖该节点的节点</span>
+        <span class="kd">public</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">nodeDependents</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+        
+        <span class="c1">// 该节点对应的动画是否完成</span>
+        <span class="kd">public</span> <span class="kt">boolean</span> <span class="n">done</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>而在<code class="highlighter-rouge">AnimatorSet</code>中是这样来存储<code class="highlighter-rouge">Node</code>:</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="c1">// 利用一个list及map来冗余地存储该AnimatorSet包含的所有Node</span>
+	<span class="kd">private</span> <span class="n">ArrayMap</span><span class="o">&lt;</span><span class="n">Animator</span><span class="o">,</span> <span class="n">Node</span><span class="o">&gt;</span> <span class="n">mNodeMap</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayMap</span><span class="o">&lt;</span><span class="n">Animator</span><span class="o">,</span> <span class="n">Node</span><span class="o">&gt;();</span>
+    <span class="kd">private</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">mNodes</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;();</span>
+    
+    <span class="c1">// 用于存储按动画运行顺序排好序的所有Node</span>
+    <span class="kd">private</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;</span> <span class="n">mSortedNodes</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">&gt;();</span>
+</code></pre>
+</div>
+
+<p>有了这两个利器之后，我们再来讨论三种组合模式的实现就变得简单了，这三种组合模式都是通过一个叫<code class="highlighter-rouge">Builder</code>的家伙来创建的，可以通过<code class="highlighter-rouge">AnimatiorSet.play(Animator)</code>来创建<code class="highlighter-rouge">Builder</code>，这也说明每一个<code class="highlighter-rouge">Builder</code>都会有一个规则主体Animator，而用这个<code class="highlighter-rouge">Builder</code>创建的规则都是以这个主体Animator为基准的，这也意味着该<code class="highlighter-rouge">Builder</code>下多条规则之间是没有直接必然的关联的，但是规则之间可能会因为主体Animator而产生间接的关系，这个时候应该举个例子来说明下这段抽象的描述，但是举例之前必须先分析三种组合模式的具体实现：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="c1">// 根据Animator获取或创建Node</span>
+    <span class="n">Node</span> <span class="n">node</span> <span class="o">=</span> <span class="n">mNodeMap</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">anim</span><span class="o">);</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">node</span> <span class="o">==</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Node</span><span class="o">(</span><span class="n">anim</span><span class="o">);</span>
+        <span class="n">mNodeMap</span><span class="o">.</span><span class="na">put</span><span class="o">(</span><span class="n">anim</span><span class="o">,</span> <span class="n">node</span><span class="o">);</span>
+        <span class="n">mNodes</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">node</span><span class="o">);</span>
+    <span class="o">}</span>
+    
+    <span class="c1">// with模式实现</span>
+    <span class="n">Dependency</span> <span class="n">dependency</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Dependency</span><span class="o">(</span><span class="n">mCurrentNode</span><span class="o">,</span> <span class="n">Dependency</span><span class="o">.</span><span class="na">WITH</span><span class="o">);</span>
+    <span class="n">node</span><span class="o">.</span><span class="na">addDependency</span><span class="o">(</span><span class="n">dependency</span><span class="o">);</span>
+    
+    <span class="c1">// before模式实现</span>
+    <span class="n">Dependency</span> <span class="n">dependency</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Dependency</span><span class="o">(</span><span class="n">mCurrentNode</span><span class="o">,</span> <span class="n">Dependency</span><span class="o">.</span><span class="na">AFTER</span><span class="o">);</span>
+    <span class="n">node</span><span class="o">.</span><span class="na">addDependency</span><span class="o">(</span><span class="n">dependency</span><span class="o">);</span>  
+    
+    <span class="c1">// after模式实现</span>
+    <span class="n">Dependency</span> <span class="n">dependency</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Dependency</span><span class="o">(</span><span class="n">node</span><span class="o">,</span> <span class="n">Dependency</span><span class="o">.</span><span class="na">AFTER</span><span class="o">);</span>
+    <span class="n">mCurrentNode</span><span class="o">.</span><span class="na">addDependency</span><span class="o">(</span><span class="n">dependency</span><span class="o">);</span>
+</code></pre>
+</div>
+<p>从实现中可以看出在创建规则的时候实际上我们定义并记录了Node之间的相互关系，同时我们发现由于在<code class="highlighter-rouge">Dependency</code>并未定义“before”类型的规则，因此“before”模式实际是用“after”模式来间接实现的。分析完这三种组合模式的具体实现之后，就可以继续前面的举例了：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code><span class="n">AnimatorSet</span> <span class="n">s</span> <span class="o">=</span> <span class="k">new</span> <span class="n">AnimatorSet</span><span class="o">();</span>
+
+<span class="c1">// 下面代码产生的规则并不能确定anim2与anim3的先后关系</span>
+<span class="n">s</span><span class="o">.</span><span class="na">play</span><span class="o">(</span><span class="n">anim1</span><span class="o">).</span><span class="na">before</span><span class="o">(</span><span class="n">anim2</span><span class="o">).</span><span class="na">before</span><span class="o">(</span><span class="n">anim3</span><span class="o">);</span>
+
+<span class="c1">// 下面代码产生的规则可间接确定anim2与anim3的先后关系</span>
+<span class="n">s</span><span class="o">.</span><span class="na">play</span><span class="o">(</span><span class="n">anim1</span><span class="o">).</span><span class="na">before</span><span class="o">(</span><span class="n">anim2</span><span class="o">).</span><span class="na">after</span><span class="o">(</span><span class="n">anim3</span><span class="o">);</span>
+
+<span class="c1">// 下面代码产生的规则可完全确定anim1、anim2、anim3之间的先后关系</span>
+<span class="n">s</span><span class="o">.</span><span class="na">play</span><span class="o">(</span><span class="n">anim1</span><span class="o">).</span><span class="na">before</span><span class="o">(</span><span class="n">anim2</span><span class="o">);</span>
+<span class="n">s</span><span class="o">.</span><span class="na">play</span><span class="o">(</span><span class="n">anim2</span><span class="o">).</span><span class="na">before</span><span class="o">(</span><span class="n">anim3</span><span class="o">);</span>
+</code></pre>
+</div>
+<p>这回应该把之前那段抽象的描述解释清楚了，但是另外一个悬念不知道各位有没有发现：我们在创建规则的时候只是记录了<code class="highlighter-rouge">Node</code>之间的相互关系，但是这种相互关系具体是怎么起作用的尚未可知，真相就蕴藏在<code class="highlighter-rouge">AnimatorSet</code>对其包含的动画的调度过程中，说曹操曹操到，下面我们就来分析<code class="highlighter-rouge">AnimatorSet</code>是怎么管理这么多动画小朋友的，要理清楚其中奥妙，还不得不提到两个特殊的监听器：<br />
+<strong>1) DependencyListener implements AnimatorListener</strong><br />
+<code class="highlighter-rouge">DependencyListener</code>用于具化依赖规则：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">public</span> <span class="kt">void</span> <span class="nf">onAnimationEnd</span><span class="p">(</span><span class="n">Animator</span> <span class="n">animation</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">mRule</span> <span class="o">==</span> <span class="n">Dependency</span><span class="o">.</span><span class="na">AFTER</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">startIfReady</span><span class="o">(</span><span class="n">animation</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="kd">public</span> <span class="kt">void</span> <span class="n">onAnimationStart</span><span class="o">(</span><span class="n">Animator</span> <span class="n">animation</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">mRule</span> <span class="o">==</span> <span class="n">Dependency</span><span class="o">.</span><span class="na">WITH</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">startIfReady</span><span class="o">(</span><span class="n">animation</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>当动画开始或结束时，会分析以动画对应<code class="highlighter-rouge">Node</code>（设为NodeA）为依赖的<code class="highlighter-rouge">Node</code>（设为NodeB），若将NodeA从NodeB的<code class="highlighter-rouge">tmpDependencies</code>中移除之后<code class="highlighter-rouge">tmpDependencies</code>不在包含其他<code class="highlighter-rouge">Node</code>则说明NodeB的启动条件已满足。</p>
+
+<p><strong>2) AnimatorSetListener implements AnimatorListener</strong>
+<code class="highlighter-rouge">AnimatorSetListener</code>对于整个<code class="highlighter-rouge">AnimatorSet</code>来说仅有一个实例，该实例会被设定到所有被包含的<code class="highlighter-rouge">Animator</code>中去，用于管理<code class="highlighter-rouge">AnimatorSet</code>的回调，如：仅当所有<code class="highlighter-rouge">Animator</code>均结束之后，才调用<code class="highlighter-rouge">AnimatorSet</code>监听器的<code class="highlighter-rouge">onAnimationEnd</code>；确保<code class="highlighter-rouge">cancel</code>时对每一<code class="highlighter-rouge">Animator</code>仅调用一次<code class="highlighter-rouge">onAnimationCancel</code>。</p>
+
+<p>了解了这两个监听器之后，我们就可以以<code class="highlighter-rouge">AnimatorSet.start</code>为切入点一气呵成地理解<code class="highlighter-rouge">AnimatorSet</code>管理所有<code class="highlighter-rouge">Animator</code>的逻辑，当<code class="highlighter-rouge">AnimatorSet.start</code>函数被调用时<code class="highlighter-rouge">AnimatorSet</code>被正式激活：</p>
+
+<ul>
+  <li>根据<code class="highlighter-rouge">AnimatorSet</code>参数初始化包含的<code class="highlighter-rouge">Animator</code>：
+    <ul>
+      <li>禁用所有<code class="highlighter-rouge">Animator</code>的异步模式</li>
+      <li>若<code class="highlighter-rouge">mDuration &gt;= 0</code>，则将该<code class="highlighter-rouge">mDuration</code>设定至所有<code class="highlighter-rouge">Animator</code></li>
+      <li>若<code class="highlighter-rouge">mInterpolator != null</code>，则将该<code class="highlighter-rouge">mInterpolator</code>设定至所有<code class="highlighter-rouge">Animator</code></li>
+    </ul>
+  </li>
+  <li>
+    <p>调用<code class="highlighter-rouge">sortNodes</code>函数根据<code class="highlighter-rouge">Node</code>之间的依赖规则确定<code class="highlighter-rouge">Node</code>中动画触发的先后顺序，存储在<code class="highlighter-rouge">mSortedNodes</code>中，具体排序算法如下（这一段引用了源码中的伪代码注释）：</p>
+
+    <blockquote>
+
+      <ul>
+        <li>All nodes without dependencies become ‘roots’</li>
+        <li>while roots list is not null
+          <ul>
+            <li>for each root r
+              <ul>
+                <li>add r to sorted list</li>
+                <li>remove r as a dependency from any other node</li>
+              </ul>
+            </li>
+            <li>any nodes with no dependencies are added to the roots list</li>
+          </ul>
+        </li>
+      </ul>
+    </blockquote>
+  </li>
+  <li>分析<code class="highlighter-rouge">mSortedNodes</code>
+    <ul>
+      <li><code class="highlighter-rouge">dependencies</code>为空的<code class="highlighter-rouge">Node</code>，作为可直接启动的<code class="highlighter-rouge">Node</code>放入<code class="highlighter-rouge">nodesToStart</code>中</li>
+      <li>对于不可直接启动的<code class="highlighter-rouge">Node</code>，针对其每一条依赖规则创建一个<code class="highlighter-rouge">DependencyListener</code>加入其监听器列表</li>
+      <li>将<code class="highlighter-rouge">AnimatorSetListener</code>加入所有Node的监听器列表</li>
+    </ul>
+  </li>
+  <li>根据该<code class="highlighter-rouge">AnimatorSet</code>是否需要延时分别处理：
+    <ul>
+      <li>需要延时：创建一个辅助延时Animator，设定其<code class="highlighter-rouge">mDuration</code>为<code class="highlighter-rouge">AnimatorSet</code>的延时时长，并在延时Animator结束之后启动<code class="highlighter-rouge">nodesToStart</code>中的所有动画</li>
+      <li>无需延时：直接启动<code class="highlighter-rouge">nodesToStart</code>中的所有动画</li>
+    </ul>
+  </li>
+  <li>调用<code class="highlighter-rouge">AnimatorSet</code>中设定的监听器的<code class="highlighter-rouge">onAnimationStart</code></li>
+  <li>若<code class="highlighter-rouge">AnimatorSet</code>不包含任何Animator（即mNodes为空）且无需延时，则直接结束该<code class="highlighter-rouge">AnimatorSet</code>，并调用<code class="highlighter-rouge">AnimatorSet</code>中设定的监听器的<code class="highlighter-rouge">onAnimationEnd</code></li>
+</ul>
+
+<p>上面这一段话请在理解了上文中提到的两个特殊监听器之后再阅读，这样你才能更加清楚的理解为什么在<code class="highlighter-rouge">start</code>函数中这样处理完了之后就可以实现根据<code class="highlighter-rouge">Node</code>之间既定的依赖关系有序的完成所有动画。按常理，应该继续分析下<code class="highlighter-rouge">AnimatorSet</code>其他的一些函数，如：<code class="highlighter-rouge">cancel()</code>、<code class="highlighter-rouge">end()</code>、<code class="highlighter-rouge">pause()</code>、<code class="highlighter-rouge">resume()</code>甚至<code class="highlighter-rouge">setTarget(Object target)</code>，但是由于这些函数原则上只是将调用传递至其包含的<code class="highlighter-rouge">Animator</code>，至于一些小的处理细节也并没有太多值得分析的，因此就留待各位自行探索啦。<br />
+整个<code class="highlighter-rouge">Animator</code>模块的分析到这，其实已经算比较完整了，而且码了这么多字已经开始产生逆反心里，但是大纲一开始就立好了，如果这时候放弃总觉得有点蛇尾，所以我今天就死磕自己一回，把属性动画的帧率决定者<code class="highlighter-rouge">Choreographer</code>撸完。</p>
+
+<h3 id="section-7">6. 属性动画编舞者</h3>
+<p><code class="highlighter-rouge">Choreographer</code>的中文翻译是“编舞者”，我觉得还是很形象的，所以这一节的标题就直接直译了。大家对<code class="highlighter-rouge">Choreographer</code>可能比较陌生，甚至有可能忘了这家伙在哪出现过，所以我先来帮大家回忆下：<code class="highlighter-rouge">AnimationHandler</code>中触发定时任务的代码是这样的：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">private</span> <span class="kt">void</span> <span class="nf">scheduleAnimation</span><span class="p">(</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">if</span> <span class="o">(!</span><span class="n">mAnimationScheduled</span><span class="o">)</span> <span class="o">{</span>
+        	<span class="c1">// 关键在这 →_→</span>
+            <span class="n">mChoreographer</span><span class="o">.</span><span class="na">postCallback</span><span class="o">(</span><span class="n">Choreographer</span><span class="o">.</span><span class="na">CALLBACK_ANIMATION</span><span class="o">,</span> <span class="n">mAnimate</span><span class="o">,</span> <span class="kc">null</span><span class="o">);</span>
+            <span class="n">mAnimationScheduled</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>这下应该回忆起来了吧！是的，<code class="highlighter-rouge">Choreographer</code>就是任务分发的核心，它决定了动画中帧与帧之间的间隔时长，用人话说就是决定了动画的流畅度。<br />
+<code class="highlighter-rouge">Choreographer</code>是线程安全的，其构造函数如下：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>	<span class="kd">private</span> <span class="nf">Choreographer</span><span class="p">(</span><span class="n">Looper</span> <span class="n">looper</span><span class="o">)</span> <span class="o">{</span>
+		<span class="c1">// 初始化Handler，用于在创建线程中分发事件</span>
+		<span class="c1">// 事件通常包括MSG_DO_FRAME、MSG_DO_SCHEDULE_VSYNC、MSG_DO_SCHEDULE_CALLBACK三类</span>
+        <span class="n">mLooper</span> <span class="o">=</span> <span class="n">looper</span><span class="o">;</span>
+        <span class="n">mHandler</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FrameHandler</span><span class="o">(</span><span class="n">looper</span><span class="o">);</span>
+        
+        <span class="c1">// 初始化vsync脉冲接收器</span>
+        <span class="n">mDisplayEventReceiver</span> <span class="o">=</span> <span class="n">USE_VSYNC</span> <span class="o">?</span> <span class="k">new</span> <span class="n">FrameDisplayEventReceiver</span><span class="o">(</span><span class="n">looper</span><span class="o">)</span> <span class="o">:</span> <span class="kc">null</span><span class="o">;</span>
+        
+        <span class="c1">// 初始化上一帧时间点</span>
+        <span class="n">mLastFrameTimeNanos</span> <span class="o">=</span> <span class="n">Long</span><span class="o">.</span><span class="na">MIN_VALUE</span><span class="o">;</span>
+        
+        <span class="c1">// 根据屏幕刷新频率计算帧间隔</span>
+        <span class="n">mFrameIntervalNanos</span> <span class="o">=</span> <span class="o">(</span><span class="kt">long</span><span class="o">)(</span><span class="mi">1000000000</span> <span class="o">/</span> <span class="n">getRefreshRate</span><span class="o">());</span>
+        
+        <span class="c1">// 创建事件队列</span>
+        <span class="n">mCallbackQueues</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CallbackQueue</span><span class="o">[</span><span class="n">CALLBACK_LAST</span> <span class="o">+</span> <span class="mi">1</span><span class="o">];</span>
+        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="n">CALLBACK_LAST</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+            <span class="n">mCallbackQueues</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="k">new</span> <span class="n">CallbackQueue</span><span class="o">();</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>这里有两个关键概念：一个是<code class="highlighter-rouge">VSYNC</code>。关于<code class="highlighter-rouge">VSYNC</code>这个概念，可参考<a href="http://blog.csdn.net/michaelcao1980/article/details/43233765">VSYNC的生成</a>这篇文章，我们这里可以简单地把他理解成屏幕刷新时的同步信号，而<code class="highlighter-rouge">FrameDisplayEventReceiver</code>则是在收到同步信号时处理一些事件（在<code class="highlighter-rouge">Choreographer</code>中会向<code class="highlighter-rouge">FrameHandler</code>发送一个以<code class="highlighter-rouge">FrameDisplayEventReceiver</code>为<code class="highlighter-rouge">callback</code>的消息，当回调回来的时候调用<code class="highlighter-rouge">Choreographer.doFrame</code>）；另一个是<code class="highlighter-rouge">CallbackQueue</code>，这是一个事件队列，目前包含CALLBACK_INPUT、CALLBACK_ANIMATION、CALLBACK_TRAVERSAL、CALLBACK_COMMIT四种类型的事件队列，这个队列是按照事件触发事件排序的优先级队列，以<code class="highlighter-rouge">action</code>+<code class="highlighter-rouge">token</code>作为组合键来判定两个事件是否相等，而通常<code class="highlighter-rouge">action</code>分为<code class="highlighter-rouge">Runnable</code>及<code class="highlighter-rouge">FrameCallback</code>两种，分别由<code class="highlighter-rouge">Choreographer.postCallback</code>和<code class="highlighter-rouge">Choreographer.postFrameCallback</code>向<code class="highlighter-rouge">Choreographer</code>进行委派。<br />
+这些概念讲清楚之后，我们就跟着Animator中的调用<code class="highlighter-rouge">mChoreographer.postCallback(Choreographer.CALLBACK_ANIMATION, mAnimate, null)</code>来感受一番传说中的编舞者，<code class="highlighter-rouge">postCallback</code>最终会调用<code class="highlighter-rouge">postCallbackDelayedInternal</code>来执行具体的逻辑：</p>
+
+<div class="language-java highlighter-rouge"><pre class="highlight"><code>    <span class="kd">synchronized</span> <span class="o">(</span><span class="n">mLock</span><span class="o">)</span> <span class="o">{</span>
+        <span class="kd">final</span> <span class="kt">long</span> <span class="n">now</span> <span class="o">=</span> <span class="n">SystemClock</span><span class="o">.</span><span class="na">uptimeMillis</span><span class="o">();</span>
+        <span class="kd">final</span> <span class="kt">long</span> <span class="n">dueTime</span> <span class="o">=</span> <span class="n">now</span> <span class="o">+</span> <span class="n">delayMillis</span><span class="o">;</span>
+        <span class="n">mCallbackQueues</span><span class="o">[</span><span class="n">callbackType</span><span class="o">].</span><span class="na">addCallbackLocked</span><span class="o">(</span><span class="n">dueTime</span><span class="o">,</span> <span class="n">action</span><span class="o">,</span> <span class="n">token</span><span class="o">);</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">dueTime</span> <span class="o">&lt;=</span> <span class="n">now</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">scheduleFrameLocked</span><span class="o">(</span><span class="n">now</span><span class="o">);</span>
+        <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">Message</span> <span class="n">msg</span> <span class="o">=</span> <span class="n">mHandler</span><span class="o">.</span><span class="na">obtainMessage</span><span class="o">(</span><span class="n">MSG_DO_SCHEDULE_CALLBACK</span><span class="o">,</span> <span class="n">action</span><span class="o">);</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">arg1</span> <span class="o">=</span> <span class="n">callbackType</span><span class="o">;</span>
+            <span class="n">msg</span><span class="o">.</span><span class="na">setAsynchronous</span><span class="o">(</span><span class="kc">true</span><span class="o">);</span>
+            <span class="n">mHandler</span><span class="o">.</span><span class="na">sendMessageAtTime</span><span class="o">(</span><span class="n">msg</span><span class="o">,</span> <span class="n">dueTime</span><span class="o">);</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+<p>这段代码首先将事件按callbackType添加至相应的事件队列，然后在指定的时间点（如无延时则直接触发，有延时则通过向<code class="highlighter-rouge">FrameHandler</code>发送<code class="highlighter-rouge">MSG_DO_SCHEDULE_CALLBACK</code>消息来进行延时分发）触发<code class="highlighter-rouge">scheduleFrameLocked</code>。（这里厚颜无耻地打个小广告，在向<code class="highlighter-rouge">FrameHandler</code>发送消息的时候，将消息设置成了异步消息，关于什么是异步消息，参看我之前分享Handler机制的文章<a href="http://www.jianshu.com/p/8a344dbd17f0">Android Handler运行机制Java层源码分析</a>中的分享）<br />
+当<code class="highlighter-rouge">scheduleFrameLocked</code>被调用时，做了如下处理：</p>
+
+<ul>
+  <li>若使用<code class="highlighter-rouge">VSYNC</code>，则调用<code class="highlighter-rouge">scheduleVsyncLocked</code>等待<code class="highlighter-rouge">VSYNC</code>信号，如上文所述，<code class="highlighter-rouge">VSYNC</code>信号到来时会通过向<code class="highlighter-rouge">FrameHandler</code>发送以<code class="highlighter-rouge">FrameDisplayEventReceiver</code>为<code class="highlighter-rouge">callback</code>的消息来触发<code class="highlighter-rouge">doFrame</code></li>
+  <li>不使用VSYNC，通过向<code class="highlighter-rouge">FrameHandler</code>发送<code class="highlighter-rouge">MSG_DO_FRAME</code>消息来触发<code class="highlighter-rouge">doFrame</code>，注意这个消息带有延时，而延时的时长为上一帧的时间点加上帧延时<code class="highlighter-rouge">sFrameDelay</code>（默认为10ms）</li>
+</ul>
+
+<p>所以不管是否通过哪种途径，最终的归属都是<code class="highlighter-rouge">doFrame(long frameTimeNanos, int frame)</code>，这里主要干了两件事：</p>
+
+<ul>
+  <li>调整<code class="highlighter-rouge">frameTimeNanos</code>：当当前时间与<code class="highlighter-rouge">frameTimeNanos</code>之差大于或等于帧间隔<code class="highlighter-rouge">mFrameIntervalNanos</code>时，调整<code class="highlighter-rouge">frameTimeNanos </code>确保当前时间与<code class="highlighter-rouge">frameTimeNanos</code>之差小于<code class="highlighter-rouge">mFrameIntervalNanos</code></li>
+  <li>调用<code class="highlighter-rouge">doCallbacks(int callbackType, long frameTimeNanos)</code>依次处理<code class="highlighter-rouge">mCallbackQueue</code>中满足条件的事件，事件队列的处理顺序为<code class="highlighter-rouge">CALLBACK_INPUT -&gt; CALLBACK_ANIMATION -&gt; CALLBACK_TRAVERSAL -&gt; CALLBACK_COMMIT</code></li>
+</ul>
+
+<p>所以事件最终是在<code class="highlighter-rouge">doCallbacks(int callbackType, long frameTimeNanos)</code>中被处理掉的，抛开细节，<code class="highlighter-rouge">doCallbacks</code>就是从<code class="highlighter-rouge">callbackType</code>对应的<code class="highlighter-rouge">mCallbackQueue</code>取出处理事件在<code class="highlighter-rouge">frameTimeNanos</code>的事件，然后调用事件对应<code class="highlighter-rouge">action</code>，实现事件的处理。<br />
+<code class="highlighter-rouge">Choreographer</code>对事件的分发处理流程大致就如上所述，整体上跟Handler的感觉挺像，只是因为跟系统帧频率挂在一起而有了不少的特殊性，甚至View的traversal也是通过它进行分发的，建议有兴趣的同学可以去寻根溯源下。</p>
+
+<h3 id="section-8">7. 后记</h3>
+<p>分析Animator的代码对于作为程序员的我来说其实并不难，但是码出这么些字来其实还是有点费劲了，从中午一直干到晚上，差不多八九个小时，但说实话用文字来描述这些东西的时候，会逼迫自己去把之前看代码时忽略的一些小细节也品味了一遍，写完之后会有一种畅通感，就像被打通了任督二脉一样，对Animator的把握变得更加系统和具象。当然，希望这篇分享有给你们带来一些启发，也建议各位多用文字把学到的东西系统地分享出来，相信我，亲测这绝对是件利人利己的事。</p>
+
+            </div>
+            
+            <div id="disqus_thread" style="margin-top: 50px;">
+                <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                <a href="http://disqus.com" class="dsq-brlink"><span class="logo-disqus">正在加载评论...</span></a>
+            </div>
+            
+            </div>
+          </div>
+          <div class="pagination">
+              
+              
+                <a class="btn btn-default" href="/2016/08/Android-Animation%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3" class="previous">上一篇</a>
+              
+</div>
+
+        </div>
+        <div class="col-md-3 hidden-xs">
+            <div style="min-height: 900px;">
+<div class="sidebar well">
+    <h1>最新文章</h1>
+    <ul>
+        
+          <li><a href="/2016/08/Android-Animator%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3">Android Animator运行原理详解</a></li>
+        
+          <li><a href="/2016/08/Android-Animation%E8%BF%90%E8%A1%8C%E5%8E%9F%E7%90%86%E8%AF%A6%E8%A7%A3">Android Animation运行原理详解</a></li>
+        
+          <li><a href="/2016/08/dex%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F%E5%8F%8Adexdiff%E5%8E%9F%E7%90%86">DexDiff：基于dex文件反编译生成dex增量包</a></li>
+        
+          <li><a href="/2016/07/%E8%8E%B7%E5%8F%96%E9%9D%9ERoot%E6%89%8B%E6%9C%BA%E4%B8%8B%E5%BA%94%E7%94%A8%E7%A7%81%E6%9C%89%E6%95%B0%E6%8D%AE-copy">获取非Root手机下应用私有数据</a></li>
+        
+          <li><a href="/2016/06/Touch%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E5%A4%84%E7%90%86%E6%9C%BA%E5%88%B6%E8%AF%A6%E8%A7%A3">Touch事件分发处理机制详解</a></li>
+        
+    </ul>
+</div>
+
+<div class="sidebar well">
+<h1>相关链接</h1>
+<ul>
+	<li><a href="https://github.com/SparkInLee/Debugger" target="blank">GitHub: Debugger</a></li>
+	<li><a href="https://github.com/SparkInLee/dexdiff" target="blank">GitHub: DexDiff</a></li>
+	<li><a href="https://github.com/SparkInLee/jbsdiff" target="blank">GitHub: JBsdiff</a></li>
+</ul>
+
+</div>
+
+<div class="sidebar well">
+	<h1>微信</h1>
+	<img src="/images/qr.png" style="width: 320px;height: 320px;" alt="SparkInLee's Blog" />
+</div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-08-android-animator-e8-bf-90-e8-a1-8c-e5-8e-9f-e7-90-86-e8-af-a6-e8-a7-a3';
+    };
+
+   (function() {
+     var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+     dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+
+
+<div class="container-fluid">
+    <div class="row-fluid">
+        <div class="span12 footer navbar-inverse navbar-fixed-bottom">
+            <p class="copyright">&copy;2016 SparkInLee's Blog.</p>
+        </div>
+    </div>
+</div>
+
+<!-- 
+  <script type="text/javascript">
+    var disqus_shortname = 'sparklee';
+
+    var disqus_config = function () {
+        this.page.identifier = '2016-08-android-animator-e8-bf-90-e8-a1-8c-e5-8e-9f-e7-90-86-e8-af-a6-e8-a7-a3';
+    };
+
+   (function () {
+     var s = document.createElement('script'); s.async = true;
+     s.type = 'text/javascript';
+     s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+     (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+   }());
+ </script>
+
+ -->
+
+  <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-75606848-1', 'auto');
+    ga('send', 'pageview');
+  </script>
+
+
+
+</body>
+</html>
+
